@@ -762,6 +762,12 @@ body.selection-mode .message-bubble {
   animation: modalZoom 0.3s var(--ease-out-expo);
 }
 
+#scrollToBottomBtn svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
 #scrollToBottomBtn:hover {
   background-color: var(--text-main);
   color: var(--bg-color);
@@ -772,26 +778,44 @@ body.selection-mode .message-bubble {
   display: none;
 }
 
+/*
+  New message counter: use a pill with min-width instead of a fixed 20x20 circle.
+  This prevents multi-digit counts (10, 99+) from getting clipped/squashed.
+*/
 #newMsgCount {
   position: absolute;
   top: -8px;
   right: -8px;
   background-color: var(--text-main);
   color: var(--bg-color);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 800;
   height: 20px;
-  width: 20px;
-  border-radius: 50%;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   animation: systemPulse 1s infinite;
+  box-sizing: border-box;
 }
 
 #newMsgCount.hidden {
   display: none;
+}
+
+@media (max-width: 640px) {
+  #newMsgCount {
+    top: -6px;
+    right: -6px;
+    height: 18px;
+    min-width: 18px;
+    padding: 0 5px;
+    font-size: 0.6rem;
+  }
 }
 
 /* ============================
@@ -807,6 +831,7 @@ body.selection-mode .message-bubble {
   font-weight: 500;
   letter-spacing: 0.5px;
   user-select: none;
+  overflow: visible;
 }
 
 .nav-item.active,
@@ -1365,4 +1390,118 @@ body.selection-mode .message-bubble {
 
 #spam-warning-toast {
   font-family: 'Inter', sans-serif;
+}
+
+/* ============================
+   36. PERFORMANCE OPTIMIZATIONS
+   ============================ */
+
+/* Disable animation for messages already in DOM (incremental updates) */
+.message-bubble.rendered {
+  animation: none;
+}
+
+/* Reduce paint complexity for large message lists */
+#feedContainer {
+  contain: layout style;
+  will-change: scroll-position;
+}
+
+/* Optimize scrolling performance */
+.message-wrapper {
+  contain: layout;
+}
+
+/* Reduce animation work when user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .message-bubble {
+    animation: none !important;
+  }
+  
+  #feedContainer {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* GPU acceleration for smooth scrolling on mobile */
+@supports (overflow: overlay) {
+  #feedContainer {
+    overflow: overlay;
+  }
+}
+
+/* ============================
+   37. NAV BADGE NOTIFICATIONS
+   ============================ */
+
+.nav-item {
+  position: relative;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 800;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  line-height: 1;
+  white-space: nowrap;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+  border: 2px solid var(--bg-color);
+  z-index: 10;
+  animation: badgeAppear 0.3s var(--ease-out-expo);
+}
+
+.nav-badge.pulse {
+  animation: badgeAppear 0.3s var(--ease-out-expo), badgePulse 1s ease-in-out;
+}
+
+@keyframes badgeAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes badgePulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 0 2px 20px rgba(239, 68, 68, 0.8);
+  }
+}
+
+/* Adjust nav item to accommodate badge */
+.nav-item {
+  padding-right: 12px; /* Extra space for badge */
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .nav-badge {
+    top: -4px;
+    right: -6px;
+    font-size: 0.55rem;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+  }
 }

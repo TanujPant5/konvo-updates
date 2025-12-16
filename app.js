@@ -1,6 +1,6 @@
 // ============================================================
 // KONVO - ANONYMOUS CHAT APPLICATION
-// Version: 3.1 (Device Fingerprinting + IP Ban System - FIXED)
+// Version: 3.3 (Fixed Profile Loading & Race Conditions)
 // ============================================================
 'use strict';
 
@@ -51,12 +51,67 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // ============================================================
+// PERFORMANCE: MESSAGE CACHE & VIRTUAL DOM
+// ============================================================
+
+const messageCache = {
+  messages: new Map(),
+  order: [],
+  lastScrollTop: 0,
+  pendingUpdates: [],
+  updateTimeout: null,
+  isRendering: false,
+  fragment: null,
+};
+
+const elementPool = {
+  bubbles: [],
+  wrappers: [],
+  maxPoolSize: 50,
+  
+  getBubble() {
+    if (this.bubbles.length > 0) {
+      const el = this.bubbles.pop();
+      el.className = 'message-bubble rounded-lg max-w-xs sm:max-w-md md:max-w-lg';
+      el.innerHTML = '';
+      return el;
+    }
+    return document.createElement('div');
+  },
+  
+  getWrapper() {
+    if (this.wrappers.length > 0) {
+      const el = this.wrappers.pop();
+      el.className = 'message-wrapper';
+      el.innerHTML = '';
+      return el;
+    }
+    return document.createElement('div');
+  },
+  
+  recycle(element) {
+    if (!element) return;
+    
+    if (element.classList.contains('message-bubble') && this.bubbles.length < this.maxPoolSize) {
+      element.innerHTML = '';
+      element.removeAttribute('style');
+      this.bubbles.push(element);
+    } else if (element.classList.contains('message-wrapper') && this.wrappers.length < this.maxPoolSize) {
+      element.innerHTML = '';
+      this.wrappers.push(element);
+    }
+  },
+  
+  clear() {
+    this.bubbles = [];
+    this.wrappers = [];
+  }
+};
+
+// ============================================================
 // DEVICE IDENTIFICATION SYSTEM
 // ============================================================
 
-/**
- * Device identification state
- */
 const deviceState = {
   fingerprint: null,
   ipAddress: null,
@@ -64,13 +119,8 @@ const deviceState = {
   isBannedDevice: false,
 };
 
-/**
- * Generate device fingerprint using FingerprintJS
- * @returns {Promise<string>} - Device fingerprint ID
- */
 async function generateDeviceFingerprint() {
   try {
-    // Check if FingerprintJS is loaded
     if (typeof FingerprintJS === 'undefined') {
       console.warn('FingerprintJS not loaded, using fallback');
       return generateFallbackFingerprint();
@@ -79,7 +129,6 @@ async function generateDeviceFingerprint() {
     const fp = await FingerprintJS.load();
     const result = await fp.get();
     
-    // The visitorId is a stable identifier
     deviceState.fingerprint = result.visitorId;
     console.log('Device fingerprint generated');
     
@@ -90,10 +139,6 @@ async function generateDeviceFingerprint() {
   }
 }
 
-/**
- * Fallback fingerprint generation if FingerprintJS fails
- * @returns {string} - Fallback fingerprint
- */
 function generateFallbackFingerprint() {
   const components = [
     navigator.userAgent,
@@ -106,7 +151,6 @@ function generateFallbackFingerprint() {
     navigator.platform,
   ];
   
-  // Create a hash from components
   let hash = 0;
   const str = components.join('|||');
   for (let i = 0; i < str.length; i++) {
@@ -121,10 +165,6 @@ function generateFallbackFingerprint() {
   return fallbackId;
 }
 
-/**
- * Get user's IP address using multiple fallback services
- * @returns {Promise<string|null>} - IP address or null
- */
 async function getUserIPAddress() {
   const ipServices = [
     'https://api.ipify.org?format=json',
@@ -147,7 +187,6 @@ async function getUserIPAddress() {
       if (response.ok) {
         const text = await response.text();
         
-        // Try to parse as JSON first
         try {
           const json = JSON.parse(text);
           const ip = json.ip || json.query || json.ipAddress;
@@ -157,7 +196,6 @@ async function getUserIPAddress() {
             return ip;
           }
         } catch {
-          // Not JSON, use raw text
           const ip = text.trim();
           if (isValidIP(ip)) {
             deviceState.ipAddress = ip;
@@ -175,18 +213,10 @@ async function getUserIPAddress() {
   return null;
 }
 
-/**
- * Validate IP address format
- * @param {string} ip - IP address to validate
- * @returns {boolean} - Whether IP is valid
- */
 function isValidIP(ip) {
   if (!ip || typeof ip !== 'string') return false;
   
-  // IPv4 pattern
   const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
-  
-  // IPv6 pattern (simplified)
   const ipv6Pattern = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:)*:([0-9a-fA-F]{1,4}:)*[0-9a-fA-F]{1,4}$|^::$/;
   
   if (ipv4Pattern.test(ip)) {
@@ -197,11 +227,6 @@ function isValidIP(ip) {
   return ipv6Pattern.test(ip);
 }
 
-/**
- * Hash an IP address for storage (privacy consideration)
- * @param {string} ip - IP address
- * @returns {string} - Hashed IP
- */
 function hashIP(ip) {
   if (!ip) return '';
   
@@ -215,13 +240,8 @@ function hashIP(ip) {
   return 'ip_' + Math.abs(hash).toString(36);
 }
 
-/**
- * Initialize device identification
- * @returns {Promise<Object>} - Device info object
- */
 async function initializeDeviceIdentification() {
   try {
-    // Generate fingerprint and get IP in parallel
     const [fingerprint, ipAddress] = await Promise.all([
       generateDeviceFingerprint(),
       getUserIPAddress()
@@ -244,7 +264,6 @@ async function initializeDeviceIdentification() {
   } catch (error) {
     console.error('Device identification error:', error);
     
-    // Return minimal info on error
     return {
       fingerprint: generateFallbackFingerprint(),
       ipAddress: null,
@@ -258,19 +277,12 @@ async function initializeDeviceIdentification() {
   }
 }
 
-/**
- * Check if device is banned
- * @param {Object} db - Firestore database instance
- * @param {Object} deviceInfo - Device information object
- * @returns {Promise<Object>} - Ban check result
- */
 async function checkDeviceBan(db, deviceInfo) {
   if (!db || !deviceInfo) {
     return { isBanned: false, reason: null };
   }
   
   try {
-    // Check fingerprint ban
     if (deviceInfo.fingerprint) {
       const fingerprintBanRef = doc(db, "banned_devices", deviceInfo.fingerprint);
       const fingerprintBanSnap = await getDoc(fingerprintBanRef);
@@ -286,7 +298,6 @@ async function checkDeviceBan(db, deviceInfo) {
       }
     }
     
-    // Check IP ban
     if (deviceInfo.ipAddress) {
       const ipHash = hashIP(deviceInfo.ipAddress);
       const ipBanRef = doc(db, "banned_ips", ipHash);
@@ -302,7 +313,6 @@ async function checkDeviceBan(db, deviceInfo) {
         };
       }
       
-      // Also check raw IP (for backward compatibility)
       const rawIpBanRef = doc(db, "banned_ips", deviceInfo.ipAddress.replace(/\./g, '_'));
       const rawIpBanSnap = await getDoc(rawIpBanRef);
       
@@ -319,17 +329,10 @@ async function checkDeviceBan(db, deviceInfo) {
     
   } catch (error) {
     console.error('Ban check error:', error);
-    // On error, allow access but log the issue
     return { isBanned: false, reason: null, error: error.message };
   }
 }
 
-/**
- * Register device in database
- * @param {Object} db - Firestore database instance
- * @param {string} userId - User ID
- * @param {Object} deviceInfo - Device information
- */
 async function registerDevice(db, userId, deviceInfo) {
   if (!db || !userId || !deviceInfo) return;
   
@@ -350,14 +353,11 @@ async function registerDevice(db, userId, deviceInfo) {
       lastSeen: serverTimestamp(),
     }, { merge: true });
     
-    // Also update last seen on existing record
     await updateDoc(deviceRef, {
       lastSeen: serverTimestamp(),
-      ipAddress: deviceInfo.ipAddress, // Update IP in case it changed
+      ipAddress: deviceInfo.ipAddress,
       ipHash: deviceInfo.ipHash,
-    }).catch(() => {
-      // Ignore if document doesn't exist for update
-    });
+    }).catch(() => {});
     
     console.log('Device registered');
     
@@ -366,14 +366,10 @@ async function registerDevice(db, userId, deviceInfo) {
   }
 }
 
-/**
- * Hide the ban check overlay
- */
 function hideBanCheckOverlay() {
   const overlay = document.getElementById('banCheckOverlay');
   if (overlay) {
     overlay.classList.add('hidden');
-    // Use setTimeout to allow transition
     setTimeout(() => {
       overlay.style.display = 'none';
     }, 300);
@@ -386,28 +382,24 @@ async function checkFullUnbanStatus() {
   try {
     let stillBanned = false;
     
-    // Check user ban
     if (state.currentUserId) {
       const userBanRef = doc(state.db, "banned_users", state.currentUserId);
       const userBanSnap = await getDoc(userBanRef);
       if (userBanSnap.exists()) stillBanned = true;
     }
     
-    // Check fingerprint ban
     if (!stillBanned && state.deviceInfo.fingerprint) {
       const fpBanRef = doc(state.db, "banned_devices", state.deviceInfo.fingerprint);
       const fpBanSnap = await getDoc(fpBanRef);
       if (fpBanSnap.exists()) stillBanned = true;
     }
     
-    // Check IP ban
     if (!stillBanned && state.deviceInfo.ipHash) {
       const ipBanRef = doc(state.db, "banned_ips", state.deviceInfo.ipHash);
       const ipBanSnap = await getDoc(ipBanRef);
       if (ipBanSnap.exists()) stillBanned = true;
     }
     
-    // Check raw IP ban
     if (!stillBanned && state.deviceInfo.ipAddress) {
       const rawIpKey = state.deviceInfo.ipAddress.replace(/\./g, '_');
       const rawIpBanRef = doc(state.db, "banned_ips", rawIpKey);
@@ -416,7 +408,6 @@ async function checkFullUnbanStatus() {
     }
     
     if (!stillBanned) {
-      // Fully unbanned!
       state.isBanned = false;
       state.isDeviceBanned = false;
       showUnbannedScreen();
@@ -427,12 +418,7 @@ async function checkFullUnbanStatus() {
   }
 }
 
-/**
- * Show device banned screen
- * @param {string} reason - Ban reason
- */
 function showDeviceBannedScreen(reason = 'Device banned') {
-  // Hide app content instead of destroying it
   const appContainer = document.getElementById('app') || document.body;
   Array.from(appContainer.children).forEach(child => {
     if (child.id !== 'banOverlayScreen') {
@@ -440,13 +426,11 @@ function showDeviceBannedScreen(reason = 'Device banned') {
     }
   });
   
-  // Remove existing overlays
   const existingOverlay = document.getElementById('banOverlayScreen');
   if (existingOverlay) existingOverlay.remove();
   const existingCheck = document.getElementById('banCheckOverlay');
   if (existingCheck) existingCheck.style.display = 'none';
   
-  // Create device ban overlay
   const overlay = document.createElement('div');
   overlay.id = 'banOverlayScreen';
   overlay.style.cssText = `
@@ -491,11 +475,6 @@ function showDeviceBannedScreen(reason = 'Device banned') {
 // SECURITY UTILITIES
 // ============================================================
 
-/**
- * Sanitize text to prevent XSS attacks
- * @param {string} text - Raw text input
- * @returns {string} - Sanitized text
- */
 function sanitizeText(text) {
   if (typeof text !== 'string') return '';
   return text
@@ -508,11 +487,6 @@ function sanitizeText(text) {
     .replace(/`/g, '&#x60;');
 }
 
-/**
- * Validate username format
- * @param {string} username - Username to validate
- * @returns {boolean} - Whether username is valid
- */
 function isValidUsername(username) {
   if (typeof username !== 'string') return false;
   const trimmed = username.trim();
@@ -528,11 +502,6 @@ function isValidUsername(username) {
   return usernameRegex.test(trimmed);
 }
 
-/**
- * Validate message text
- * @param {string} text - Message text to validate
- * @returns {boolean} - Whether text is valid
- */
 function isValidMessageText(text) {
   if (typeof text !== 'string') return false;
   const trimmed = text.trim();
@@ -542,11 +511,6 @@ function isValidMessageText(text) {
   return !controlCharRegex.test(trimmed);
 }
 
-/**
- * Validate URL for profile photos
- * @param {string} url - URL to validate
- * @returns {boolean} - Whether URL is valid
- */
 function isValidProfilePhotoURL(url) {
   if (typeof url !== 'string') return false;
   if (url.length > 500) return false;
@@ -560,11 +524,6 @@ function isValidProfilePhotoURL(url) {
   return allowedPatterns.some(pattern => pattern.test(url));
 }
 
-/**
- * Enhanced message validation before posting
- * @param {string} text - Message text to validate
- * @returns {Object} - Validation result with valid flag and error/text
- */
 function validateMessageBeforePost(text) {
   if (typeof text !== 'string') {
     return { valid: false, error: "Invalid message format" };
@@ -588,32 +547,16 @@ function validateMessageBeforePost(text) {
   return { valid: true, text: trimmed };
 }
 
-/**
- * Safely set element text content (prevents XSS)
- * @param {HTMLElement|null} element - Target element
- * @param {string} text - Text content
- */
 function setTextSafely(element, text) {
   if (element && element instanceof HTMLElement) {
     element.textContent = text || '';
   }
 }
 
-/**
- * Safely create text node (prevents XSS)
- * @param {string} text - Text content
- * @returns {Text} - Text node
- */
 function createSafeTextNode(text) {
   return document.createTextNode(text || '');
 }
 
-/**
- * Debounce function for performance
- * @param {Function} func - Function to debounce
- * @param {number} wait - Wait time in ms
- * @returns {Function} - Debounced function
- */
 function debounce(func, wait) {
   let timeout;
   return function executedFunction(...args) {
@@ -626,12 +569,6 @@ function debounce(func, wait) {
   };
 }
 
-/**
- * Throttle function for performance
- * @param {Function} func - Function to throttle
- * @param {number} limit - Limit time in ms
- * @returns {Function} - Throttled function
- */
 function throttle(func, limit) {
   let inThrottle;
   return function(...args) {
@@ -643,11 +580,6 @@ function throttle(func, limit) {
   };
 }
 
-/**
- * Escape CSS selector to prevent injection
- * @param {string} selector - Selector to escape
- * @returns {string} - Escaped selector
- */
 function escapeSelector(selector) {
   if (typeof selector !== 'string') return '';
   return CSS.escape(selector);
@@ -821,15 +753,18 @@ const state = {
   currentProfilePhotoURL: null,
   isCurrentUserAdmin: false,
   
-  // Device tracking
   deviceInfo: null,
   
   userProfiles: {},
   lastConfessionDocs: [],
   lastChatDocs: [],
   
+  // FIX: Enhanced profile loading state
   pendingProfileLoads: new Set(),
+  failedProfileLoads: new Set(), // Track failed loads for retry
   profileLoadTimeout: null,
+  profileLoadRetryTimeout: null,
+  isLoadingProfiles: false,
   
   confessionsCollection: null,
   chatCollection: null,
@@ -855,24 +790,41 @@ const state = {
   isInitialized: false,
   isBanned: false,
   isDeviceBanned: false,
+
+  unreadChatCount: 0,
+  unreadConfessionCount: 0,
+  
+  lastSeenChatTimestamp: Date.now(),
+  lastSeenConfessionTimestamp: Date.now(),
+  
+  // FIX: Enhanced render state management
+  isFirstRender: true,
+  lastRenderTime: 0,
+  renderQueue: [],
+  isProcessingQueue: false,
+  isRendering: false, // Prevent concurrent renders
+  renderDebounceTimeout: null,
+  
+  // FIX: Track listener state to prevent duplicates
+  backgroundListenersActive: false,
 };
 
 // Anti-Spam State
 const spamTracker = {
-  messageTimestamps: [],      // Array of timestamps for recent messages
-  warningShown: false,        // Whether warning has been shown
-  lastCleanup: Date.now(),    // Last cleanup time
+  messageTimestamps: [],
+  warningShown: false,
+  lastCleanup: Date.now(),
 };
 
 const unsubscribers = {
-  confessions: () => {},
-  chat: () => {},
-  userProfiles: () => {},
-  typingStatus: () => {},
-  pinned: () => {},
-  banCheck: () => {},
-  deviceBanCheck: () => {},
-  ipBanCheck: () => {},
+  confessions: null,
+  chat: null,
+  userProfiles: null,
+  typingStatus: null,
+  pinned: null,
+  banCheck: null,
+  deviceBanCheck: null,
+  ipBanCheck: null,
 };
 
 // ============================================================
@@ -899,12 +851,20 @@ const USERNAME_MAX_LENGTH = 30;
 const TYPING_TIMEOUT = 3000;
 const TYPING_STALE_THRESHOLD = 5000;
 
-// Anti-Spam Configuration
+const RENDER_DEBOUNCE_MS = 16;
+const BATCH_SIZE = 10;
+const IDLE_CALLBACK_TIMEOUT = 50;
+
+// FIX: Profile loading constants
+const PROFILE_LOAD_DELAY = 50; // Reduced from 100ms for faster loading
+const PROFILE_RETRY_DELAY = 2000; // Retry failed profiles after 2 seconds
+const PROFILE_BATCH_SIZE = 30;
+
 const SPAM_CONFIG = Object.freeze({
-  MAX_MESSAGES: 10,           // Maximum messages allowed
-  TIME_WINDOW: 20000,         // Time window in ms (20 seconds)
-  WARNING_THRESHOLD: 7,       // Show warning after this many messages
-  CLEANUP_INTERVAL: 30000,    // Clean old timestamps every 30 seconds
+  MAX_MESSAGES: 10,
+  TIME_WINDOW: 20000,
+  WARNING_THRESHOLD: 7,
+  CLEANUP_INTERVAL: 30000,
 });
 
 // ============================================================
@@ -977,55 +937,51 @@ function createActionContainer() {
   return confirmModalActionContainer;
 }
 
+// FIX: Improved cleanup function
 function cleanupAllListeners() {
   Object.entries(unsubscribers).forEach(([key, unsub]) => {
     if (typeof unsub === 'function') {
       try {
         unsub();
-        unsubscribers[key] = () => {};
       } catch (e) {
         console.warn(`Failed to unsubscribe ${key}:`, e);
       }
     }
+    unsubscribers[key] = null;
   });
+  state.backgroundListenersActive = false;
 }
 
-// ADD THIS NEW FUNCTION:
 function cleanupNonBanListeners() {
   const banListenerKeys = ['banCheck', 'deviceBanCheck', 'ipBanCheck'];
   
   Object.entries(unsubscribers).forEach(([key, unsub]) => {
-    // Keep ban listeners active so we can detect unban
     if (banListenerKeys.includes(key)) return;
     
     if (typeof unsub === 'function') {
       try {
         unsub();
-        unsubscribers[key] = () => {};
       } catch (e) {
         console.warn(`Failed to unsubscribe ${key}:`, e);
       }
     }
+    unsubscribers[key] = null;
   });
+  state.backgroundListenersActive = false;
 }
 
 // ============================================================
 // ANTI-SPAM SYSTEM
 // ============================================================
 
-/**
- * Clean up old message timestamps outside the time window
- */
 function cleanupSpamTracker() {
   const now = Date.now();
   const cutoff = now - SPAM_CONFIG.TIME_WINDOW;
   
-  // Remove timestamps older than the time window
   spamTracker.messageTimestamps = spamTracker.messageTimestamps.filter(
     ts => ts > cutoff
   );
   
-  // Reset warning if message count drops below threshold
   if (spamTracker.messageTimestamps.length < SPAM_CONFIG.WARNING_THRESHOLD) {
     spamTracker.warningShown = false;
   }
@@ -1033,19 +989,13 @@ function cleanupSpamTracker() {
   spamTracker.lastCleanup = now;
 }
 
-/**
- * Check if user is spamming and handle accordingly
- * @returns {Object} - { allowed: boolean, reason?: string }
- */
 function checkSpamStatus() {
   const now = Date.now();
   
-  // Periodic cleanup
   if (now - spamTracker.lastCleanup > SPAM_CONFIG.CLEANUP_INTERVAL) {
     cleanupSpamTracker();
   }
   
-  // Clean timestamps outside window
   const cutoff = now - SPAM_CONFIG.TIME_WINDOW;
   spamTracker.messageTimestamps = spamTracker.messageTimestamps.filter(
     ts => ts > cutoff
@@ -1053,7 +1003,6 @@ function checkSpamStatus() {
   
   const messageCount = spamTracker.messageTimestamps.length;
   
-  // Check if already at spam limit
   if (messageCount >= SPAM_CONFIG.MAX_MESSAGES) {
     return { 
       allowed: false, 
@@ -1062,7 +1011,6 @@ function checkSpamStatus() {
     };
   }
   
-  // Show warning if approaching limit
   if (messageCount >= SPAM_CONFIG.WARNING_THRESHOLD && !spamTracker.warningShown) {
     spamTracker.warningShown = true;
     const remaining = SPAM_CONFIG.MAX_MESSAGES - messageCount;
@@ -1075,17 +1023,10 @@ function checkSpamStatus() {
   return { allowed: true };
 }
 
-/**
- * Record a new message timestamp
- */
 function recordMessage() {
   spamTracker.messageTimestamps.push(Date.now());
 }
 
-/**
- * Auto-ban user for spamming
- * Bans user account, device fingerprint, and IP address
- */
 async function autoBanForSpam() {
   if (!state.db || !state.currentUserId) return;
   
@@ -1094,11 +1035,9 @@ async function autoBanForSpam() {
   try {
     const batch = writeBatch(state.db);
     
-    // 1. Ban user account
     const userRef = doc(state.db, "users", state.currentUserId);
     batch.set(userRef, { banned: true }, { merge: true });
     
-    // 2. Add to banned_users collection
     const banRef = doc(state.db, "banned_users", state.currentUserId);
     batch.set(banRef, {
       bannedBy: "SYSTEM_AUTO_BAN",
@@ -1107,7 +1046,6 @@ async function autoBanForSpam() {
       username: state.currentUsername || 'Unknown'
     });
     
-    // 3. Ban device fingerprint
     if (state.deviceInfo?.fingerprint) {
       const fingerprintBanRef = doc(state.db, "banned_devices", state.deviceInfo.fingerprint);
       batch.set(fingerprintBanRef, {
@@ -1122,7 +1060,6 @@ async function autoBanForSpam() {
       });
     }
     
-    // 4. Ban IP address (hashed)
     if (state.deviceInfo?.ipHash) {
       const ipBanRef = doc(state.db, "banned_ips", state.deviceInfo.ipHash);
       batch.set(ipBanRef, {
@@ -1136,7 +1073,6 @@ async function autoBanForSpam() {
       });
     }
     
-    // 5. Ban raw IP address (for compatibility)
     if (state.deviceInfo?.ipAddress) {
       const rawIpKey = state.deviceInfo.ipAddress.replace(/\./g, '_');
       const rawIpBanRef = doc(state.db, "banned_ips", rawIpKey);
@@ -1154,26 +1090,18 @@ async function autoBanForSpam() {
     
     console.log('User auto-banned for spam');
     
-    // Update local state
     state.isBanned = true;
     state.isDeviceBanned = true;
     
-    // Show banned screen
     showSpamBannedScreen();
     
   } catch (error) {
     console.error('Auto-ban error:', error);
-    // Even if ban fails, show the screen to stop spamming
     showSpamBannedScreen();
   }
 }
 
-/**
- * Show banned screen specifically for spam
- */
-
 function showSpamBannedScreen() {
-  // Hide app content
   const appContainer = document.getElementById('app') || document.body;
   Array.from(appContainer.children).forEach(child => {
     if (child.id !== 'banOverlayScreen') {
@@ -1181,11 +1109,9 @@ function showSpamBannedScreen() {
     }
   });
   
-  // Remove existing overlays
   const existingOverlay = document.getElementById('banOverlayScreen');
   if (existingOverlay) existingOverlay.remove();
   
-  // Create spam ban overlay
   const overlay = document.createElement('div');
   overlay.id = 'banOverlayScreen';
   overlay.style.cssText = `
@@ -1212,7 +1138,7 @@ function showSpamBannedScreen() {
   
   const p2 = document.createElement('p');
   p2.style.cssText = 'color: #666; font-size: 0.75rem;';
-  p2.textContent = `Reason: Mana kiya tha Maat kar  .`;
+  p2.textContent = `Reason: Mana kiya tha Maat kar.`;
   
   const p3 = document.createElement('p');
   p3.style.cssText = 'color: #555; font-size: 0.7rem; margin-top: 1rem;';
@@ -1226,13 +1152,7 @@ function showSpamBannedScreen() {
   document.body.appendChild(overlay);
 }
 
-
-/**
- * Show spam warning toast
- * @param {string} message - Warning message
- */
 function showSpamWarning(message) {
-  // Create warning toast
   const existingToast = document.getElementById('spam-warning-toast');
   if (existingToast) {
     existingToast.remove();
@@ -1261,7 +1181,6 @@ function showSpamWarning(message) {
   
   document.body.appendChild(toast);
   
-  // Remove after 4 seconds
   setTimeout(() => {
     if (toast.parentNode) {
       toast.style.animation = 'fadeOut 0.3s ease-out forwards';
@@ -1328,7 +1247,8 @@ function setupConnectionMonitor() {
   window.addEventListener('online', () => {
     console.log('Connection restored');
     if (state.isInitialized) {
-      showPage(state.currentPage);
+      // FIX: Retry failed profile loads when connection is restored
+      retryFailedProfileLoads();
     }
   });
 
@@ -1488,9 +1408,6 @@ async function togglePinMessage() {
   }
 }
 
-/**
- * Toggle ban status of a user - WITH FRESH DATA CHECK AND PROPER UNBAN
- */
 async function toggleBanUser() {
   if (!state.currentContextMenuData || !state.db) return;
   
@@ -1504,7 +1421,6 @@ async function toggleBanUser() {
 
   hideDropdownMenu();
   
-  // FIXED: Fetch fresh ban status from Firestore instead of using cache
   let isBanned = false;
   try {
     const banDocRef = doc(state.db, "banned_users", userId);
@@ -1530,17 +1446,13 @@ async function toggleBanUser() {
   try {
     const batch = writeBatch(state.db);
     
-    // 1. Update user document
     const userRef = doc(state.db, "users", userId);
     if (isBanned) {
-      // UNBANNING: Set banned to false explicitly
       batch.update(userRef, { banned: false });
     } else {
-      // BANNING: Set banned to true
       batch.set(userRef, { banned: true }, { merge: true });
     }
     
-    // 2. Update banned_users collection
     const banRef = doc(state.db, "banned_users", userId);
     if (isBanned) {
       batch.delete(banRef);
@@ -1553,7 +1465,6 @@ async function toggleBanUser() {
       });
     }
     
-    // 3. Get user's device info and ban/unban devices
     const devicesQuery = query(
       collection(state.db, "user_devices"),
       where("userId", "==", userId)
@@ -1573,16 +1484,13 @@ async function toggleBanUser() {
     for (const deviceDoc of devicesSnapshot.docs) {
       const deviceData = deviceDoc.data();
       
-      // Ban/Unban fingerprint (avoid duplicates)
       if (deviceData.fingerprint && !processedFingerprints.has(deviceData.fingerprint)) {
         processedFingerprints.add(deviceData.fingerprint);
         const fingerprintBanRef = doc(state.db, "banned_devices", deviceData.fingerprint);
         
         if (isBanned) {
-          // UNBANNING: Delete the ban document
           batch.delete(fingerprintBanRef);
         } else {
-          // BANNING: Create ban document
           batch.set(fingerprintBanRef, {
             fingerprint: deviceData.fingerprint,
             userId: userId,
@@ -1596,7 +1504,6 @@ async function toggleBanUser() {
         }
       }
       
-      // Ban/Unban IP hash (avoid duplicates)
       if (deviceData.ipHash && !processedIPs.has(deviceData.ipHash)) {
         processedIPs.add(deviceData.ipHash);
         const ipBanRef = doc(state.db, "banned_ips", deviceData.ipHash);
@@ -1616,7 +1523,6 @@ async function toggleBanUser() {
         }
       }
       
-      // Also handle raw IP if available (avoid duplicates)
       if (deviceData.ipAddress) {
         const rawIpKey = deviceData.ipAddress.replace(/\./g, '_');
         if (!processedIPs.has(rawIpKey)) {
@@ -1641,7 +1547,6 @@ async function toggleBanUser() {
     
     await batch.commit();
     
-    // Update local cache
     if (state.userProfiles[userId]) {
       state.userProfiles[userId].banned = !isBanned;
     }
@@ -1668,7 +1573,6 @@ async function toggleBanUser() {
 
 async function initFirebase() {
   try {
-    // First, initialize device identification
     console.log('Initializing device identification...');
     state.deviceInfo = await initializeDeviceIdentification();
     
@@ -1694,7 +1598,6 @@ async function initFirebase() {
       state.db = initializeFirestore(state.app, {});
     }
 
-    // Check for device-level ban BEFORE authentication
     console.log('Checking device ban status...');
     const deviceBanCheck = await checkDeviceBan(state.db, state.deviceInfo);
     
@@ -1721,7 +1624,6 @@ async function handleAuthStateChange(user) {
     state.currentUserId = user.uid;
     console.log("Authenticated with UID:", state.currentUserId);
 
-    // Register device with user association
     await registerDevice(state.db, state.currentUserId, state.deviceInfo);
 
     state.confessionsCollection = collection(state.db, "confessions");
@@ -1733,7 +1635,6 @@ async function handleAuthStateChange(user) {
     setupAdminMenu();
     setupConnectionMonitor();
 
-    listenForUserProfiles();
     listenForBanStatus();
     listenForDeviceBans();
 
@@ -1749,11 +1650,21 @@ async function handleAuthStateChange(user) {
       console.error("Profile load failed:", e);
     }
 
-    // Hide the loading overlay
     hideBanCheckOverlay();
 
     initScrollObserver();
-    showPage(state.currentPage);
+    
+    state.lastSeenChatTimestamp = Date.now();
+    state.lastSeenConfessionTimestamp = Date.now();
+    
+    // FIX: Setup background listeners only once
+    if (!state.backgroundListenersActive) {
+      setupBackgroundListeners();
+    }
+    
+    // Show initial page UI
+    showPageUI(state.currentPage);
+    
     state.isInitialized = true;
     
   } else {
@@ -1791,7 +1702,7 @@ async function checkAdminStatus() {
 function listenForPinnedMessages() {
   if (typeof unsubscribers.pinned === 'function') {
     unsubscribers.pinned();
-    unsubscribers.pinned = () => {};
+    unsubscribers.pinned = null;
   }
 
   const q = query(
@@ -1834,13 +1745,13 @@ function listenForPinnedMessages() {
 }
 
 // ============================================================
-// BAN STATUS - FIXED TO HANDLE UNBAN
+// BAN STATUS
 // ============================================================
 
 function listenForBanStatus() {
   if (typeof unsubscribers.banCheck === 'function') {
     unsubscribers.banCheck();
-    unsubscribers.banCheck = () => {};
+    unsubscribers.banCheck = null;
   }
   
   if (!state.currentUserId || !state.db) return;
@@ -1849,18 +1760,16 @@ function listenForBanStatus() {
     doc(state.db, "banned_users", state.currentUserId), 
     (docSnap) => {
       if (docSnap.exists()) {
-        // User is banned
         if (!state.isBanned) {
           state.isBanned = true;
           state.userProfiles = {};
-          cleanupNonBanListeners(); // ✅ Keep ban listeners active!
+          cleanupNonBanListeners();
           showBannedScreen();
         }
       } else {
-        // User is NOT banned (unbanned or never banned)
         if (state.isBanned) {
           state.isBanned = false;
-          showUnbannedScreen(); // ✅ Show recovery option
+          showUnbannedScreen();
         }
       }
     },
@@ -1870,33 +1779,28 @@ function listenForBanStatus() {
   );
 }
 
-/**
- * Listen for device-level bans (fingerprint & IP) - FIXED
- */
 function listenForDeviceBans() {
   if (typeof unsubscribers.deviceBanCheck === 'function') {
     unsubscribers.deviceBanCheck();
-    unsubscribers.deviceBanCheck = () => {};
+    unsubscribers.deviceBanCheck = null;
   }
   if (typeof unsubscribers.ipBanCheck === 'function') {
     unsubscribers.ipBanCheck();
-    unsubscribers.ipBanCheck = () => {};
+    unsubscribers.ipBanCheck = null;
   }
   
   if (!state.db || !state.deviceInfo?.fingerprint) return;
 
-  // Listen for fingerprint ban
   unsubscribers.deviceBanCheck = onSnapshot(
     doc(state.db, "banned_devices", state.deviceInfo.fingerprint), 
     (docSnap) => {
       if (docSnap.exists()) {
         if (!state.isDeviceBanned) {
           state.isDeviceBanned = true;
-          cleanupNonBanListeners(); // ✅ Keep ban listeners active!
+          cleanupNonBanListeners();
           showDeviceBannedScreen('Device fingerprint banned');
         }
       } else {
-        // Device ban removed - check if fully unbanned
         if (state.isDeviceBanned) {
           checkFullUnbanStatus();
         }
@@ -1907,7 +1811,6 @@ function listenForDeviceBans() {
     }
   );
   
-  // Listen for IP ban
   if (state.deviceInfo.ipHash) {
     unsubscribers.ipBanCheck = onSnapshot(
       doc(state.db, "banned_ips", state.deviceInfo.ipHash), 
@@ -1915,11 +1818,10 @@ function listenForDeviceBans() {
         if (docSnap.exists()) {
           if (!state.isDeviceBanned) {
             state.isDeviceBanned = true;
-            cleanupNonBanListeners(); // ✅ Keep ban listeners active!
+            cleanupNonBanListeners();
             showDeviceBannedScreen('IP address banned');
           }
         } else {
-          // IP ban removed - check if fully unbanned
           if (state.isDeviceBanned) {
             checkFullUnbanStatus();
           }
@@ -1932,16 +1834,10 @@ function listenForDeviceBans() {
   }
 }
 
-/**
- * Show recovery screen when user is unbanned
- * User needs to refresh to continue using the app
- */
 function showUnbannedScreen() {
-  // Remove ban overlay
   const banOverlay = document.getElementById('banOverlayScreen');
   if (banOverlay) banOverlay.remove();
   
-  // Create unban notification overlay
   const overlay = document.createElement('div');
   overlay.id = 'unbanOverlayScreen';
   overlay.style.cssText = `
@@ -1989,24 +1885,18 @@ function showUnbannedScreen() {
   document.body.appendChild(overlay);
 }
 
-
-
 function showBannedScreen() {
-  // Store original body content reference
   const appContainer = document.getElementById('app') || document.body;
   
-  // Hide app content instead of destroying it
   Array.from(appContainer.children).forEach(child => {
     if (child.id !== 'banOverlayScreen') {
       child.style.display = 'none';
     }
   });
   
-  // Remove existing ban overlay if present
   const existingOverlay = document.getElementById('banOverlayScreen');
   if (existingOverlay) existingOverlay.remove();
   
-  // Create ban overlay
   const overlay = document.createElement('div');
   overlay.id = 'banOverlayScreen';
   overlay.className = 'banned-overlay';
@@ -2085,6 +1975,64 @@ function updateScrollButton() {
   }
 }
 
+// ============================================================
+// NAV BADGE NOTIFICATION SYSTEM
+// ============================================================
+
+function updateNavBadge(tab, count) {
+  const navElement = tab === 'chat' ? navChat : navConfessions;
+  if (!navElement) return;
+  
+  const existingBadge = navElement.querySelector('.nav-badge');
+  if (existingBadge) {
+    existingBadge.remove();
+  }
+  
+  if (count > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'nav-badge';
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.setAttribute('aria-label', `${count} unread messages`);
+    navElement.appendChild(badge);
+    
+    badge.classList.add('pulse');
+    setTimeout(() => badge.classList.remove('pulse'), 1000);
+  }
+}
+
+function incrementUnreadCount(tab, increment = 1) {
+  if (tab === 'chat') {
+    state.unreadChatCount += increment;
+    updateNavBadge('chat', state.unreadChatCount);
+  } else if (tab === 'confessions') {
+    state.unreadConfessionCount += increment;
+    updateNavBadge('confessions', state.unreadConfessionCount);
+  }
+}
+
+function clearUnreadCount(tab) {
+  if (tab === 'chat') {
+    state.unreadChatCount = 0;
+    state.lastSeenChatTimestamp = Date.now();
+    updateNavBadge('chat', 0);
+  } else if (tab === 'confessions') {
+    state.unreadConfessionCount = 0;
+    state.lastSeenConfessionTimestamp = Date.now();
+    updateNavBadge('confessions', 0);
+  }
+}
+
+function isNewMessageForBadge(data, tab) {
+  if (!data.timestamp) return false;
+  
+  const msgTime = data.timestamp.toMillis ? data.timestamp.toMillis() : data.timestamp;
+  const lastSeen = tab === 'chat' 
+    ? state.lastSeenChatTimestamp 
+    : state.lastSeenConfessionTimestamp;
+  
+  return msgTime > lastSeen;
+}
+
 function scrollToBottom() {
   if (!feedContainer) return;
   
@@ -2095,9 +2043,12 @@ function scrollToBottom() {
 }
 
 // ============================================================
-// USER PROFILES
+// USER PROFILES - FIXED
 // ============================================================
 
+/**
+ * FIX: Improved profile request with immediate loading for visible messages
+ */
 function requestUserProfile(userId) {
   if (!userId || typeof userId !== 'string') return;
   if (state.userProfiles[userId]) return;
@@ -2105,61 +2056,130 @@ function requestUserProfile(userId) {
   
   state.pendingProfileLoads.add(userId);
   
+  // Remove from failed set if retrying
+  state.failedProfileLoads.delete(userId);
+  
   if (state.profileLoadTimeout) {
     clearTimeout(state.profileLoadTimeout);
   }
   
+  // FIX: Reduced delay for faster profile loading
   state.profileLoadTimeout = setTimeout(() => {
     loadPendingProfiles();
-  }, 100);
+  }, PROFILE_LOAD_DELAY);
 }
 
+/**
+ * FIX: Retry failed profile loads
+ */
+function retryFailedProfileLoads() {
+  if (state.failedProfileLoads.size === 0) return;
+  
+  console.log(`Retrying ${state.failedProfileLoads.size} failed profile loads`);
+  
+  state.failedProfileLoads.forEach(userId => {
+    state.pendingProfileLoads.add(userId);
+  });
+  state.failedProfileLoads.clear();
+  
+  loadPendingProfiles();
+}
+
+/**
+ * FIX: Enhanced profile loading with better error handling and retry logic
+ */
 async function loadPendingProfiles() {
   if (state.pendingProfileLoads.size === 0) return;
   if (!state.db) return;
+  if (state.isLoadingProfiles) return;
+  
+  state.isLoadingProfiles = true;
   
   const userIds = Array.from(state.pendingProfileLoads);
   state.pendingProfileLoads.clear();
   
-  const batchSize = 30;
+  const batchSize = PROFILE_BATCH_SIZE;
+  let loadedCount = 0;
+  let failedCount = 0;
   
   for (let i = 0; i < userIds.length; i += batchSize) {
     const batch = userIds.slice(i, i + batchSize);
     
     try {
+      // Try batch query first
       const q = query(
         collection(state.db, "users"),
         where("__name__", "in", batch)
       );
       
       const snapshot = await getDocs(q);
+      const foundIds = new Set();
       
       snapshot.docs.forEach((docSnap) => {
         state.userProfiles[docSnap.id] = docSnap.data();
+        foundIds.add(docSnap.id);
+        loadedCount++;
+      });
+      
+      // Mark unfound users as having empty profiles (they might not exist)
+      batch.forEach(userId => {
+        if (!foundIds.has(userId) && !state.userProfiles[userId]) {
+          // Store a minimal profile so we don't keep retrying
+          state.userProfiles[userId] = { username: null, profilePhotoURL: null };
+        }
       });
       
     } catch (error) {
-      console.error("Error loading user profiles:", error);
+      console.error("Batch profile load error:", error);
       
+      // Fall back to individual loads
       for (const userId of batch) {
+        if (state.userProfiles[userId]) continue;
+        
         try {
           const docRef = doc(state.db, "users", userId);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             state.userProfiles[docSnap.id] = docSnap.data();
+            loadedCount++;
+          } else {
+            // User doesn't exist, store empty profile
+            state.userProfiles[userId] = { username: null, profilePhotoURL: null };
           }
         } catch (e) {
           console.warn(`Failed to load profile for ${userId}:`, e);
+          state.failedProfileLoads.add(userId);
+          failedCount++;
         }
       }
     }
   }
   
-  updateDisplayedUsernames();
+  state.isLoadingProfiles = false;
+  
+  console.log(`Loaded ${loadedCount} profiles, ${failedCount} failed`);
+  
+  // Update displayed usernames immediately
+  requestAnimationFrame(() => {
+    updateDisplayedUsernames();
+  });
+  
+  // Schedule retry for failed loads
+  if (state.failedProfileLoads.size > 0 && !state.profileLoadRetryTimeout) {
+    state.profileLoadRetryTimeout = setTimeout(() => {
+      state.profileLoadRetryTimeout = null;
+      retryFailedProfileLoads();
+    }, PROFILE_RETRY_DELAY);
+  }
 }
 
+/**
+ * FIX: Improved username update with better selectors and profile photo handling
+ */
 function updateDisplayedUsernames() {
-  document.querySelectorAll('.message-bubble').forEach((bubble) => {
+  const bubbles = document.querySelectorAll('.message-bubble[data-user-id]');
+  
+  bubbles.forEach((bubble) => {
     const userId = bubble.dataset.userId;
     if (!userId) return;
     
@@ -2167,30 +2187,67 @@ function updateDisplayedUsernames() {
     if (!profile) return;
     
     const username = profile.username || "Anonymous";
+    const firstChar = (username[0] || "?").toUpperCase();
+    const defaultPhotoURL = `https://placehold.co/32x32/000000/ffffff?text=${encodeURIComponent(firstChar)}`;
     
-    const usernameEl = bubble.querySelector('.font-bold.text-sm.opacity-90');
-    if (usernameEl && usernameEl.textContent !== username) {
-      usernameEl.textContent = username;
+    // FIX: More robust selector for username element
+    // Look for the username in the header section
+    const headerDiv = bubble.querySelector('.flex.items-center.gap-1\\.5.mb-1');
+    if (headerDiv) {
+      // Find username element - it's the div that's not an img
+      const usernameEl = headerDiv.querySelector('div.font-bold');
+      if (usernameEl) {
+        const currentUsername = usernameEl.textContent;
+        if (currentUsername !== username && currentUsername === "Anonymous" && username !== "Anonymous") {
+          usernameEl.textContent = username;
+        } else if (currentUsername !== username && profile.username) {
+          usernameEl.textContent = username;
+        }
+      }
     }
     
+    // Update profile photo
     const imgEl = bubble.querySelector('.chat-pfp');
-    if (imgEl && profile.profilePhotoURL) {
+    if (imgEl) {
+      const photoURL = profile.profilePhotoURL && isValidProfilePhotoURL(profile.profilePhotoURL) 
+        ? profile.profilePhotoURL 
+        : defaultPhotoURL;
+      
       const currentSrc = imgEl.getAttribute('src');
-      if (currentSrc !== profile.profilePhotoURL && isValidProfilePhotoURL(profile.profilePhotoURL)) {
-        imgEl.src = profile.profilePhotoURL;
+      // Only update if the current src is a default placeholder
+      if (currentSrc !== photoURL && currentSrc.includes('placehold.co')) {
+        imgEl.src = photoURL;
       }
+    }
+  });
+  
+  // Also update reply previews
+  document.querySelectorAll('.reply-preview').forEach(preview => {
+    const bubble = preview.closest('.message-bubble');
+    if (!bubble) return;
+    
+    // Get the reply author from the data
+    const replyAuthorEl = preview.querySelector('.reply-author');
+    if (replyAuthorEl && replyAuthorEl.textContent === 'Anonymous') {
+      // Try to find userId in parent bubble's reply data
+      // This is harder since we don't have direct access, so we skip for now
     }
   });
 }
 
+/**
+ * FIX: Enhanced real-time profile listener
+ */
 function listenForUserProfiles() {
   if (typeof unsubscribers.userProfiles === 'function') {
     unsubscribers.userProfiles();
-    unsubscribers.userProfiles = () => {};
+    unsubscribers.userProfiles = null;
   }
 
   const checkAndSetupListener = () => {
-    const loadedUserIds = Object.keys(state.userProfiles);
+    const loadedUserIds = Object.keys(state.userProfiles).filter(
+      id => state.userProfiles[id]?.username // Only watch users with actual profiles
+    );
     
     if (loadedUserIds.length === 0) {
       setTimeout(checkAndSetupListener, 2000);
@@ -2207,13 +2264,27 @@ function listenForUserProfiles() {
       
       unsubscribers.userProfiles = onSnapshot(q, 
         (snapshot) => {
+          let hasChanges = false;
+          
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'modified' || change.type === 'added') {
-              state.userProfiles[change.doc.id] = change.doc.data();
+              const newData = change.doc.data();
+              const oldData = state.userProfiles[change.doc.id];
+              
+              // Check if username actually changed
+              if (!oldData || oldData.username !== newData.username || 
+                  oldData.profilePhotoURL !== newData.profilePhotoURL) {
+                state.userProfiles[change.doc.id] = newData;
+                hasChanges = true;
+              }
             }
           });
           
-          updateDisplayedUsernames();
+          if (hasChanges) {
+            requestAnimationFrame(() => {
+              updateDisplayedUsernames();
+            });
+          }
         },
         (error) => {
           console.error("User profiles listener error:", error);
@@ -2321,6 +2392,11 @@ async function handleProfileSave() {
       profilePhotoURL: newProfilePhotoURL
     };
     
+    // Update displayed usernames immediately
+    requestAnimationFrame(() => {
+      updateDisplayedUsernames();
+    });
+    
     closeProfileModal();
     
   } catch (error) {
@@ -2336,28 +2412,8 @@ async function handleProfileSave() {
 }
 
 // ============================================================
-// MODAL FUNCTIONS
+// MODAL FUNCTIONS (continued)
 // ============================================================
-
-function openProfileModal() {
-  if (!modalUsernameInput || !profileModal) return;
-  
-  modalUsernameInput.value = state.currentUsername === "Anonymous" 
-    ? "" 
-    : state.currentUsername;
-  
-  profileModal.classList.add("is-open");
-  profileModal.setAttribute("aria-hidden", "false");
-  
-  setTimeout(() => modalUsernameInput.focus(), 100);
-}
-
-function closeProfileModal() {
-  if (!profileModal) return;
-  
-  profileModal.classList.remove("is-open");
-  profileModal.setAttribute("aria-hidden", "true");
-}
 
 function showEditModal(docId, collectionName, currentText) {
   if (!editModal || !modalEditTextArea) return;
@@ -2520,7 +2576,7 @@ async function toggleReaction(docId, collectionName, reactionType, hasReacted) {
 }
 
 // ============================================================
-// CONTEXT MENU (continued)
+// CONTEXT MENU
 // ============================================================
 
 function showDropdownMenu(event, data) {
@@ -2562,9 +2618,7 @@ function showDropdownMenu(event, data) {
   if (menuBan) {
     menuBan.style.display = (isAdmin && !isMine) ? "block" : "none";
     
-    // FIXED: Fetch fresh ban status instead of using cached data
     if (isAdmin && !isMine && data.userId) {
-      // Update the menu text asynchronously
       (async () => {
         try {
           const banDocRef = doc(state.db, "banned_users", data.userId);
@@ -2768,32 +2822,33 @@ async function handleMultiDelete() {
 }
 
 // ============================================================
-// PAGE NAVIGATION
+// PAGE UI SWITCHING
 // ============================================================
 
-function showPage(page) {
+function showPageUI(page) {
   if (page !== 'chat' && page !== 'confessions') {
     page = 'chat';
   }
   
   state.currentPage = page;
   
+  // Clear message cache when switching pages
+  messageCache.messages.clear();
+  messageCache.order = [];
+  state.isFirstRender = true;
+  
+  // Clear unread count for the page we're switching TO
+  clearUnreadCount(page);
+  
   if (state.isSelectionMode) exitSelectionMode();
   cancelReplyMode();
   
   document.querySelectorAll(".reaction-picker").forEach(p => p.remove());
   
-  if (typeof unsubscribers.confessions === 'function') {
-    unsubscribers.confessions();
-    unsubscribers.confessions = () => {};
-  }
-  if (typeof unsubscribers.chat === 'function') {
-    unsubscribers.chat();
-    unsubscribers.chat = () => {};
-  }
+  // Cleanup typing listener when switching pages
   if (typeof unsubscribers.typingStatus === 'function') {
     unsubscribers.typingStatus();
-    unsubscribers.typingStatus = () => {};
+    unsubscribers.typingStatus = null;
   }
   
   if (typingIndicator) typingIndicator.innerHTML = "&nbsp;";
@@ -2823,7 +2878,13 @@ function showPage(page) {
     }
     if (typingIndicator) typingIndicator.classList.add("hidden");
     
-    listenForConfessions();
+    // Render confessions from cached docs
+    if (state.lastConfessionDocs.length > 0) {
+      renderFeedOptimized(state.lastConfessionDocs, "confessions", null, true);
+    } else {
+      showLoadingState("confessions");
+    }
+    
   } else {
     navChat?.classList.add("active");
     navChat?.setAttribute("aria-pressed", "true");
@@ -2840,8 +2901,25 @@ function showPage(page) {
     }
     if (typingIndicator) typingIndicator.classList.remove("hidden");
     
-    listenForChat();
+    // Render chat from cached docs
+    if (state.lastChatDocs.length > 0) {
+      renderFeedOptimized(state.lastChatDocs, "chat", null, true);
+    } else {
+      showLoadingState("chat");
+    }
+    
     listenForTyping();
+  }
+}
+
+function showLoadingState(type) {
+  if (feedContainer) {
+    feedContainer.innerHTML = '';
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'loading';
+    loadingDiv.className = 'text-center p-4 text-[#888888] text-sm';
+    loadingDiv.textContent = `LOADING ${type.toUpperCase()}...`;
+    feedContainer.appendChild(loadingDiv);
   }
 }
 
@@ -2849,119 +2927,13 @@ function showPage(page) {
 // REAL-TIME LISTENERS
 // ============================================================
 
-function safeRenderFeed(docs, type, snapshot, isRerender, isFirstSnapshot = false) {
-  try {
-    renderFeed(docs, type, snapshot, isRerender, isFirstSnapshot);
-  } catch (error) {
-    console.error('Render error:', error);
-    
-    if (feedContainer) {
-      feedContainer.innerHTML = '';
-      
-      const errorDiv = document.createElement("div");
-      errorDiv.className = "text-center p-4 text-red-500";
-      errorDiv.textContent = "Error rendering messages. Please refresh.";
-      
-      const retryBtn = document.createElement("button");
-      retryBtn.className = "mt-2 px-4 py-2 bg-white text-black rounded";
-      retryBtn.textContent = "Retry";
-      retryBtn.onclick = () => showPage(state.currentPage);
-      
-      feedContainer.appendChild(errorDiv);
-      feedContainer.appendChild(retryBtn);
-    }
-  }
-}
-
-function listenForConfessions(isRerender = false) {
-  if (isRerender) {
-    safeRenderFeed(state.lastConfessionDocs, "confessions", null, true);
-    return;
-  }
-  
-  if (typeof unsubscribers.chat === 'function') {
-    unsubscribers.chat();
-    unsubscribers.chat = () => {};
-  }
-  
-  if (feedContainer) {
-    feedContainer.innerHTML = '';
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = 'loading';
-    loadingDiv.className = 'text-center p-4 text-[#888888] text-sm';
-    loadingDiv.textContent = 'LOADING CONFESSIONS...';
-    feedContainer.appendChild(loadingDiv);
-  }
-  
-  let isFirstSnapshot = true;
-  
-  unsubscribers.confessions = onSnapshot(
-    query(state.confessionsCollection, orderBy("timestamp", "asc")),
-    (snapshot) => {
-      state.lastConfessionDocs = snapshot.docs;
-      safeRenderFeed(state.lastConfessionDocs, "confessions", snapshot, false, isFirstSnapshot);
-      isFirstSnapshot = false;
-    },
-    (error) => {
-      console.error('Confessions error:', error);
-      if (feedContainer) {
-        feedContainer.innerHTML = '';
-        const errorDiv = document.createElement("div");
-        errorDiv.className = "text-center p-4 text-red-500";
-        errorDiv.textContent = "Error loading confessions: " + error.message;
-        feedContainer.appendChild(errorDiv);
-      }
-    }
-  );
-}
-
-function listenForChat(isRerender = false) {
-  if (isRerender) {
-    safeRenderFeed(state.lastChatDocs, "chat", null, true);
-    return;
-  }
-  
-  if (typeof unsubscribers.confessions === 'function') {
-    unsubscribers.confessions();
-    unsubscribers.confessions = () => {};
-  }
-  
-  if (feedContainer) {
-    feedContainer.innerHTML = '';
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = 'loading';
-    loadingDiv.className = 'text-center p-4 text-[#888888] text-sm';
-    loadingDiv.textContent = 'LOADING CHAT...';
-    feedContainer.appendChild(loadingDiv);
-  }
-  
-  let isFirstSnapshot = true;
-  
-  unsubscribers.chat = onSnapshot(
-    query(state.chatCollection, orderBy("timestamp", "asc")),
-    (snapshot) => {
-      state.lastChatDocs = snapshot.docs;
-      safeRenderFeed(state.lastChatDocs, "chat", snapshot, false, isFirstSnapshot);
-      isFirstSnapshot = false;
-    },
-    (error) => {
-      console.error('Chat error:', error);
-      if (feedContainer) {
-        feedContainer.innerHTML = '';
-        const errorDiv = document.createElement("div");
-        errorDiv.className = "text-center p-4 text-red-500";
-        errorDiv.textContent = "Error loading chat: " + error.message;
-        feedContainer.appendChild(errorDiv);
-      }
-    }
-  );
-}
-
 function listenForTyping() {
   if (typeof unsubscribers.typingStatus === 'function') {
     unsubscribers.typingStatus();
-    unsubscribers.typingStatus = () => {};
+    unsubscribers.typingStatus = null;
   }
+  
+  if (!state.typingStatusCollection) return;
   
   unsubscribers.typingStatus = onSnapshot(
     state.typingStatusCollection, 
@@ -3032,381 +3004,810 @@ const updateTypingStatus = debounce(async (isTyping) => {
 }, 300);
 
 // ============================================================
-// RENDER FEED
+// BACKGROUND LISTENERS FOR UNREAD BADGES - FIXED
 // ============================================================
 
-function renderFeed(docs, type, snapshot, isRerender, isFirstSnapshot = false) {
-  if (!feedContainer) return;
-  
-  document.querySelectorAll(".reaction-picker").forEach(p => p.remove());
-  
-  if (!isRerender && snapshot) {
-    snapshot.docChanges().forEach((change) => {
-      if (change.type === "added") {
-        const data = change.doc.data();
-        const msgTime = data.timestamp ? data.timestamp.toMillis() : 0;
-        const isNewMessage = msgTime > appStartTime;
-        const isHidden = data.hiddenFor?.includes(state.currentUserId);
-        
-        if (isNewMessage && 
-            (document.visibilityState === "hidden" || state.currentPage !== type) && 
-            data.userId !== state.currentUserId && 
-            !isHidden) {
-          showNotification(
-            type === "chat" ? "New Chat" : "New Confession", 
-            data.text?.substring(0, 100) || "New message"
-          );
-        }
-      }
-    });
-  }
-
-  const prevScrollTop = feedContainer.scrollTop;
-  const wasAtBottom = state.userIsAtBottom;
-  
-  feedContainer.innerHTML = "";
-
-  if (docs.length === 0) {
-    const emptyDiv = document.createElement("div");
-    emptyDiv.id = "loading";
-    emptyDiv.className = "text-center p-4 text-[#888888] text-sm";
-    emptyDiv.textContent = `NO ${type.toUpperCase()} YET. BE THE FIRST!`;
-    feedContainer.appendChild(emptyDiv);
+function setupBackgroundListeners() {
+  // Prevent duplicate setup
+  if (state.backgroundListenersActive) {
+    console.log('Background listeners already active');
     return;
   }
-
-  let lastUserId = null;
-  let lastDateString = null;
-
-  docs.forEach((docInstance) => {
-    const data = docInstance.data();
+  
+  state.backgroundListenersActive = true;
+  console.log('Setting up background listeners...');
+  
+  // Cleanup existing listeners first
+  if (typeof unsubscribers.chat === 'function') {
+    unsubscribers.chat();
+    unsubscribers.chat = null;
+  }
+  if (typeof unsubscribers.confessions === 'function') {
+    unsubscribers.confessions();
+    unsubscribers.confessions = null;
+  }
+  
+  // FIX: Track first snapshot for each collection separately
+  let chatFirstSnapshot = true;
+  let confessionsFirstSnapshot = true;
+  
+  // Listen for chat messages
+  const chatQuery = query(state.chatCollection, orderBy("timestamp", "asc"));
+  
+  unsubscribers.chat = onSnapshot(chatQuery, (snapshot) => {
+    state.lastChatDocs = snapshot.docs;
     
-    if (data.hiddenFor?.includes(state.currentUserId)) {
-      return;
-    }
-
-    const text = data.text || "...";
-    const messageDateObj = data.timestamp ? data.timestamp.toDate() : new Date();
-    const messageDateStr = messageDateObj.toDateString();
-
-    const docUserId = data.userId;
-    if (docUserId && !state.userProfiles[docUserId]) {
-      requestUserProfile(docUserId);
-    }
+    // FIX: Collect all user IDs from messages for profile loading
+    const userIdsToLoad = new Set();
+    snapshot.docs.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data.userId) userIdsToLoad.add(data.userId);
+      if (data.replyTo?.userId) userIdsToLoad.add(data.replyTo.userId);
+    });
     
-    if (data.replyTo?.userId && !state.userProfiles[data.replyTo.userId]) {
-      requestUserProfile(data.replyTo.userId);
-    }
-
-    if (lastDateString !== messageDateStr) {
-      const sepDiv = document.createElement('div');
-      sepDiv.className = 'date-separator';
-      const sepSpan = document.createElement('span');
-      sepSpan.textContent = getDateHeader(messageDateObj);
-      sepDiv.appendChild(sepSpan);
-      feedContainer.appendChild(sepDiv);
-      lastDateString = messageDateStr;
-      lastUserId = null;
-    }
-
-    const profile = state.userProfiles[docUserId] || {};
-    const username = profile.username || "Anonymous";
-    const firstChar = (username[0] || "?").toUpperCase();
-    const photoURL = profile.profilePhotoURL || 
-      `https://placehold.co/32x32/000000/ffffff?text=${encodeURIComponent(firstChar)}`;
+    // Request profiles for all users
+    userIdsToLoad.forEach(userId => {
+      if (!state.userProfiles[userId]) {
+        requestUserProfile(userId);
+      }
+    });
     
-    const isMine = state.currentUserId && docUserId === state.currentUserId;
-    const isConsecutive = docUserId && docUserId === lastUserId;
-    lastUserId = docUserId;
-    
-    const userColor = getUserColor(docUserId);
-
-    const alignWrapper = document.createElement("div");
-    alignWrapper.className = `flex w-full ${isMine ? "justify-end" : "justify-start"}`;
-    
-    const row = document.createElement("div");
-    row.className = "message-wrapper";
-
-    const bubble = document.createElement("div");
-    bubble.className = `message-bubble rounded-lg max-w-xs sm:max-w-md md:max-w-lg ${isMine ? "my-message" : ""}`;
-    
-    if (data.isPinned) {
-      bubble.classList.add("pinned");
+    // Count new messages for badge (only if not on chat page and not first snapshot)
+    if (!chatFirstSnapshot && state.currentPage !== 'chat') {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          if (data.userId !== state.currentUserId && 
+              !data.hiddenFor?.includes(state.currentUserId)) {
+            const msgTime = data.timestamp ? data.timestamp.toMillis() : 0;
+            if (msgTime > state.lastSeenChatTimestamp) {
+              incrementUnreadCount('chat');
+            }
+          }
+        }
+      });
     }
     
-    bubble.dataset.id = docInstance.id;
-    bubble.dataset.text = text;
-    bubble.dataset.isMine = String(isMine);
-    bubble.dataset.userId = docUserId || '';
-    bubble.dataset.username = username;
-    bubble.dataset.isPinned = String(data.isPinned || false);
-    bubble.dataset.timestamp = data.timestamp ? String(data.timestamp.toMillis()) : String(Date.now());
+    // Only render if we're on the chat page
+    if (state.currentPage === 'chat') {
+      renderFeedOptimized(state.lastChatDocs, "chat", snapshot, false, chatFirstSnapshot);
+    }
+    
+    chatFirstSnapshot = false;
+  }, (error) => {
+    console.error('Background chat listener error:', error);
+    state.backgroundListenersActive = false;
+  });
+  
+  // Listen for confessions
+  const confessionsQuery = query(state.confessionsCollection, orderBy("timestamp", "asc"));
+  
+  unsubscribers.confessions = onSnapshot(confessionsQuery, (snapshot) => {
+    state.lastConfessionDocs = snapshot.docs;
+    
+    // FIX: Collect all user IDs from messages for profile loading
+    const userIdsToLoad = new Set();
+    snapshot.docs.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data.userId) userIdsToLoad.add(data.userId);
+      if (data.replyTo?.userId) userIdsToLoad.add(data.replyTo.userId);
+    });
+    
+    // Request profiles for all users
+    userIdsToLoad.forEach(userId => {
+      if (!state.userProfiles[userId]) {
+        requestUserProfile(userId);
+      }
+    });
+    
+    // Count new messages for badge (only if not on confessions page and not first snapshot)
+    if (!confessionsFirstSnapshot && state.currentPage !== 'confessions') {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          if (data.userId !== state.currentUserId && 
+              !data.hiddenFor?.includes(state.currentUserId)) {
+            const msgTime = data.timestamp ? data.timestamp.toMillis() : 0;
+            if (msgTime > state.lastSeenConfessionTimestamp) {
+              incrementUnreadCount('confessions');
+            }
+          }
+        }
+      });
+    }
+    
+    // Only render if we're on the confessions page
+    if (state.currentPage === 'confessions') {
+      renderFeedOptimized(state.lastConfessionDocs, "confessions", snapshot, false, confessionsFirstSnapshot);
+    }
+    
+    confessionsFirstSnapshot = false;
+  }, (error) => {
+    console.error('Background confessions listener error:', error);
+    state.backgroundListenersActive = false;
+  });
+  
+  // FIX: Start listening for user profile updates
+  listenForUserProfiles();
+}
+
+// ============================================================
+// OPTIMIZED RENDER FEED - FIXED
+// ============================================================
+
+/**
+ * FIX: Get username with proper fallback handling
+ */
+function getUsernameForRender(userId) {
+  if (!userId) return "Anonymous";
+  
+  const profile = state.userProfiles[userId];
+  if (profile && profile.username) {
+    return profile.username;
+  }
+  
+  // Request profile load if not available
+  if (!profile) {
+    requestUserProfile(userId);
+  }
+  
+  return "Anonymous";
+}
+
+/**
+ * FIX: Create a single message element with improved profile handling
+ */
+function createMessageElement(docInstance, type, lastUserId, lastDateString) {
+  const data = docInstance.data();
+  const docId = docInstance.id;
+  
+  // Skip hidden messages
+  if (data.hiddenFor?.includes(state.currentUserId)) {
+    return { element: null, lastUserId, lastDateString, skipped: true };
+  }
+
+  const text = data.text || "...";
+  const messageDateObj = data.timestamp ? data.timestamp.toDate() : new Date();
+  const messageDateStr = messageDateObj.toDateString();
+  const docUserId = data.userId;
+  
+  // FIX: Always request profile loading for users we don't have yet
+  if (docUserId && !state.userProfiles[docUserId]) {
+    requestUserProfile(docUserId);
+  }
+  if (data.replyTo?.userId && !state.userProfiles[data.replyTo.userId]) {
+    requestUserProfile(data.replyTo.userId);
+  }
+
+  const elements = [];
+  
+  // Date separator
+  if (lastDateString !== messageDateStr) {
+    const sepDiv = document.createElement('div');
+    sepDiv.className = 'date-separator';
+    const sepSpan = document.createElement('span');
+    sepSpan.textContent = getDateHeader(messageDateObj);
+    sepDiv.appendChild(sepSpan);
+    elements.push(sepDiv);
+    lastDateString = messageDateStr;
+    lastUserId = null;
+  }
+
+  // FIX: Get profile with proper fallback
+  const profile = state.userProfiles[docUserId] || {};
+  const username = profile.username || "Anonymous";
+  const firstChar = (username[0] || "A").toUpperCase();
+  const photoURL = (profile.profilePhotoURL && isValidProfilePhotoURL(profile.profilePhotoURL))
+    ? profile.profilePhotoURL 
+    : `https://placehold.co/32x32/000000/ffffff?text=${encodeURIComponent(firstChar)}`;
+  
+  const isMine = state.currentUserId && docUserId === state.currentUserId;
+  const isConsecutive = docUserId && docUserId === lastUserId;
+  const userColor = getUserColor(docUserId);
+
+  // Align wrapper
+  const alignWrapper = document.createElement("div");
+  alignWrapper.className = `flex w-full ${isMine ? "justify-end" : "justify-start"}`;
+  
+  // Message wrapper
+  const row = document.createElement("div");
+  row.className = "message-wrapper";
+
+  // Message bubble
+  const bubble = document.createElement("div");
+  bubble.className = `message-bubble rounded-lg max-w-xs sm:max-w-md md:max-w-lg ${isMine ? "my-message" : ""}`;
+  
+  if (data.isPinned) {
+    bubble.classList.add("pinned");
+  }
+  
+  // FIX: Set data attributes including userId for later profile updates
+  bubble.dataset.id = docId;
+  bubble.dataset.text = text;
+  bubble.dataset.isMine = String(isMine);
+  bubble.dataset.userId = docUserId || '';
+  bubble.dataset.username = username;
+  bubble.dataset.isPinned = String(data.isPinned || false);
+  bubble.dataset.timestamp = data.timestamp ? String(data.timestamp.toMillis()) : String(Date.now());
+  
+  if (!isMine) {
+    bubble.style.borderLeft = `3px solid ${userColor}`;
+    bubble.style.background = `linear-gradient(90deg, ${userColor}10, transparent)`;
+  }
+  
+  if (state.isSelectionMode && state.selectedMessages.has(docId)) {
+    bubble.classList.add("selected-message");
+  }
+  
+  // Click handler for selection mode
+  bubble.addEventListener('click', (e) => {
+    if (state.isSelectionMode) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleMessageClick(bubble);
+    }
+  });
+
+  // Kebab button
+  const kebabBtn = document.createElement("button");
+  kebabBtn.type = "button";
+  kebabBtn.className = "kebab-btn";
+  kebabBtn.setAttribute("aria-label", "Message options");
+  kebabBtn.appendChild(createKebabIcon());
+  kebabBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    showDropdownMenu(e, bubble.dataset);
+  });
+
+  // Header (only for non-consecutive messages)
+  if (!isConsecutive) {
+    const headerElement = document.createElement("div");
+    headerElement.className = `flex items-center gap-1.5 mb-1 ${isMine ? "justify-end" : "justify-start"}`;
+    
+    const imgElement = document.createElement("img");
+    imgElement.src = photoURL;
+    imgElement.alt = "";
+    imgElement.className = `chat-pfp ${isMine ? "order-2" : "order-1"}`;
+    imgElement.loading = "lazy";
+    imgElement.draggable = false;
+    if (!isMine) imgElement.style.borderColor = userColor;
+    
+    imgElement.onerror = function() {
+      this.src = `https://placehold.co/32x32/000000/ffffff?text=${encodeURIComponent(firstChar)}`;
+    };
+    
+    const usernameElement = document.createElement("div");
+    usernameElement.className = `font-bold text-sm opacity-90 ${isMine ? "order-1 text-right" : "order-2 text-left"}`;
+    usernameElement.textContent = username;
+    if (!isMine) usernameElement.style.color = userColor;
+    
+    headerElement.appendChild(imgElement);
+    headerElement.appendChild(usernameElement);
+    bubble.appendChild(headerElement);
+  }
+
+  // Reply preview
+  if (data.replyTo) {
+    const replyPreview = document.createElement("div");
+    replyPreview.className = "reply-preview";
+    
+    const replyAuthorEl = document.createElement("div");
+    replyAuthorEl.className = "reply-author";
+    // FIX: Get reply author username properly
+    const replyAuthorName = getUsernameForRender(data.replyTo.userId);
+    replyAuthorEl.textContent = replyAuthorName;
     
     if (!isMine) {
-      bubble.style.borderLeft = `3px solid ${userColor}`;
-      bubble.style.background = `linear-gradient(90deg, ${userColor}10, transparent)`;
+      replyPreview.style.borderLeftColor = userColor;
+      replyAuthorEl.style.color = userColor;
     }
     
-    if (state.isSelectionMode && state.selectedMessages.has(docInstance.id)) {
-      bubble.classList.add("selected-message");
-    }
+    const replyTextEl = document.createElement("div");
+    replyTextEl.className = "reply-text";
+    replyTextEl.textContent = data.replyTo.text;
     
-    bubble.addEventListener('click', (e) => {
-      if (state.isSelectionMode) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleMessageClick(bubble);
+    replyPreview.appendChild(replyAuthorEl);
+    replyPreview.appendChild(replyTextEl);
+    
+    replyPreview.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const escapedId = escapeSelector(data.replyTo.messageId);
+      const originalBubble = document.querySelector(`.message-bubble[data-id="${escapedId}"]`);
+      if (originalBubble) {
+        originalBubble.scrollIntoView({ behavior: "smooth", block: "center" });
+        originalBubble.style.backgroundColor = "rgba(255, 255, 255, 0.1)";
+        setTimeout(() => {
+          originalBubble.style.backgroundColor = "";
+        }, 1000);
       }
     });
+    
+    bubble.appendChild(replyPreview);
+  }
 
-    const kebabBtn = document.createElement("button");
-    kebabBtn.type = "button";
-    kebabBtn.className = "kebab-btn";
-    kebabBtn.setAttribute("aria-label", "Message options");
-    kebabBtn.appendChild(createKebabIcon());
-    kebabBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      showDropdownMenu(e, bubble.dataset);
-    });
+  // Text content
+  const textElement = document.createElement("p");
+  textElement.className = "text-left";
+  
+  if (data.isPinned) {
+    const pinIcon = document.createElement("span");
+    pinIcon.className = "text-amber-400 mr-1";
+    pinIcon.setAttribute("aria-hidden", "true");
+    pinIcon.textContent = "📌";
+    textElement.appendChild(pinIcon);
+  }
+  
+  textElement.appendChild(document.createTextNode(text));
+  bubble.appendChild(textElement);
 
-    if (!isConsecutive) {
-      const headerElement = document.createElement("div");
-      headerElement.className = `flex items-center gap-1.5 mb-1 ${isMine ? "justify-end" : "justify-start"}`;
+  // Footer with timestamp
+  const footerDiv = document.createElement("div");
+  footerDiv.className = "bubble-footer";
+  footerDiv.style.justifyContent = isMine ? "flex-end" : "flex-start";
+  
+  const timeElement = document.createElement("span");
+  timeElement.className = "inner-timestamp";
+  timeElement.dataset.ts = data.timestamp ? String(data.timestamp.toMillis()) : String(Date.now());
+  
+  let timeText = formatMessageTime(messageDateObj);
+  if (data.edited) timeText += " (edited)";
+  timeElement.textContent = timeText;
+  
+  footerDiv.appendChild(timeElement);
+  bubble.appendChild(footerDiv);
+
+  // Reactions
+  const docReactions = data.reactions || {};
+  const chipsContainer = document.createElement("div");
+  chipsContainer.className = "reaction-chips-container";
+  let hasChips = false;
+  
+  Object.keys(REACTION_TYPES).forEach(rtype => {
+    const userIds = docReactions[rtype] || [];
+    if (userIds.length > 0) {
+      hasChips = true;
+      const chip = document.createElement("div");
+      chip.className = "reaction-chip";
       
-      const imgElement = document.createElement("img");
-      imgElement.src = photoURL;
-      imgElement.alt = "";
-      imgElement.className = `chat-pfp ${isMine ? "order-2" : "order-1"}`;
-      imgElement.loading = "lazy";
-      imgElement.draggable = false;
-      if (!isMine) imgElement.style.borderColor = userColor;
+      const hasReacted = userIds.includes(state.currentUserId);
+      if (hasReacted) chip.classList.add("user-reacted");
       
-      imgElement.onerror = function() {
-        this.src = `https://placehold.co/32x32/000000/ffffff?text=${encodeURIComponent(firstChar)}`;
+      const emojiSpan = document.createElement("span");
+      emojiSpan.textContent = REACTION_TYPES[rtype];
+      
+      const countSpan = document.createElement("span");
+      countSpan.textContent = ` ${userIds.length}`;
+      
+      chip.appendChild(emojiSpan);
+      chip.appendChild(countSpan);
+      
+      chip.onclick = (e) => {
+        e.stopPropagation();
+        toggleReaction(docId, type, rtype, hasReacted);
       };
       
-      const usernameElement = document.createElement("div");
-      usernameElement.className = `font-bold text-sm opacity-90 ${isMine ? "order-1 text-right" : "order-2 text-left"}`;
-      usernameElement.textContent = username;
-      if (!isMine) usernameElement.style.color = userColor;
-      
-      headerElement.appendChild(imgElement);
-      headerElement.appendChild(usernameElement);
-      bubble.appendChild(headerElement);
+      chipsContainer.appendChild(chip);
+    }
+  });
+  
+  if (hasChips) {
+    bubble.appendChild(chipsContainer);
+    bubble.classList.add("has-reactions");
+  }
+
+  // Action buttons
+  const replyBtn = document.createElement("button");
+  replyBtn.type = "button";
+  replyBtn.className = "side-action-btn";
+  replyBtn.setAttribute("aria-label", "Reply to message");
+  replyBtn.textContent = "↩";
+  replyBtn.onclick = (e) => {
+    e.stopPropagation();
+    startReplyMode(bubble.dataset);
+  };
+
+  const reactBtn = document.createElement("button");
+  reactBtn.type = "button";
+  reactBtn.className = "side-action-btn";
+  reactBtn.setAttribute("aria-label", "Add reaction");
+  reactBtn.textContent = "♡";
+
+  const picker = document.createElement("div");
+  picker.className = "reaction-picker hidden";
+  picker.setAttribute("role", "menu");
+  
+  Object.entries(REACTION_TYPES).forEach(([rtype, emoji]) => {
+    const opt = document.createElement("span");
+    opt.className = "reaction-option";
+    opt.setAttribute("role", "menuitem");
+    opt.textContent = emoji;
+    opt.onclick = (e) => {
+      e.stopPropagation();
+      const hasReacted = (docReactions[rtype] || []).includes(state.currentUserId);
+      toggleReaction(docId, type, rtype, hasReacted);
+      picker.classList.add("hidden");
+      picker.remove();
+    };
+    picker.appendChild(opt);
+  });
+
+  reactBtn.onclick = (e) => {
+    e.stopPropagation();
+    
+    document.querySelectorAll(".reaction-picker").forEach(p => {
+      p.classList.add("hidden");
+      p.remove();
+    });
+    
+    const rect = reactBtn.getBoundingClientRect();
+    picker.style.top = `${rect.top - 60}px`;
+    
+    if (window.innerWidth < 640) {
+      picker.style.left = "50%";
+      picker.style.transform = "translateX(-50%)";
+    } else {
+      picker.style.left = `${rect.left}px`;
+    }
+    
+    picker.classList.remove("hidden");
+    document.body.appendChild(picker);
+  };
+
+  // Bubble wrapper
+  const bubbleWrapper = document.createElement("div");
+  bubbleWrapper.className = `bubble-wrapper ${isMine ? "my-bubble-wrapper" : ""} ${isConsecutive ? "mt-0.5" : "mt-2"}`;
+  bubbleWrapper.appendChild(kebabBtn);
+  bubbleWrapper.appendChild(bubble);
+
+  if (isMine) {
+    row.appendChild(reactBtn);
+    row.appendChild(replyBtn);
+    row.appendChild(bubbleWrapper);
+  } else {
+    row.appendChild(bubbleWrapper);
+    row.appendChild(replyBtn);
+    row.appendChild(reactBtn);
+  }
+  
+  alignWrapper.appendChild(row);
+  elements.push(alignWrapper);
+
+  return { 
+    elements, 
+    lastUserId: docUserId, 
+    lastDateString,
+    skipped: false,
+    docId
+  };
+}
+
+/**
+ * FIX: Debounced render to prevent rapid re-renders
+ */
+const debouncedRender = debounce((docs, type, snapshot, isRerender, isFirstSnapshot) => {
+  renderFeedOptimizedInternal(docs, type, snapshot, isRerender, isFirstSnapshot);
+}, RENDER_DEBOUNCE_MS);
+
+/**
+ * FIX: Main render function with race condition prevention
+ */
+function renderFeedOptimized(docs, type, snapshot, isRerender, isFirstSnapshot = false) {
+  // FIX: Prevent concurrent renders
+  if (state.isRendering && !isFirstSnapshot) {
+    // Queue this render for later
+    if (state.renderDebounceTimeout) {
+      clearTimeout(state.renderDebounceTimeout);
+    }
+    state.renderDebounceTimeout = setTimeout(() => {
+      renderFeedOptimized(docs, type, snapshot, isRerender, isFirstSnapshot);
+    }, RENDER_DEBOUNCE_MS);
+    return;
+  }
+  
+  // For first render, execute immediately
+  if (isFirstSnapshot || state.isFirstRender) {
+    renderFeedOptimizedInternal(docs, type, snapshot, isRerender, isFirstSnapshot);
+  } else {
+    // Debounce subsequent renders
+    debouncedRender(docs, type, snapshot, isRerender, isFirstSnapshot);
+  }
+}
+
+/**
+ * FIX: Internal render function
+ */
+function renderFeedOptimizedInternal(docs, type, snapshot, isRerender, isFirstSnapshot = false) {
+  if (!feedContainer) return;
+  
+  state.isRendering = true;
+  
+  try {
+    // Clean up reaction pickers
+    document.querySelectorAll(".reaction-picker").forEach(p => p.remove());
+    
+    // Handle notifications for new messages
+    if (!isRerender && snapshot) {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const data = change.doc.data();
+          const msgTime = data.timestamp ? data.timestamp.toMillis() : 0;
+          const isNewMessage = msgTime > appStartTime;
+          const isHidden = data.hiddenFor?.includes(state.currentUserId);
+          
+          if (isNewMessage && 
+              (document.visibilityState === "hidden" || state.currentPage !== type) && 
+              data.userId !== state.currentUserId && 
+              !isHidden) {
+            showNotification(
+              type === "chat" ? "New Chat" : "New Confession", 
+              data.text?.substring(0, 100) || "New message"
+            );
+          }
+        }
+      });
     }
 
-    if (data.replyTo) {
-      const replyPreview = document.createElement("div");
-      replyPreview.className = "reply-preview";
+    const wasAtBottom = state.userIsAtBottom;
+    
+    // FIX: For first render or full refresh, use DocumentFragment
+    if (state.isFirstRender || isFirstSnapshot || isRerender) {
+      state.isFirstRender = false;
       
-      const replyAuthorEl = document.createElement("div");
-      replyAuthorEl.className = "reply-author";
-      replyAuthorEl.textContent = state.userProfiles[data.replyTo.userId]?.username || "Anonymous";
+      const fragment = document.createDocumentFragment();
       
-      if (!isMine) {
-        replyPreview.style.borderLeftColor = userColor;
-        replyAuthorEl.style.color = userColor;
+      if (docs.length === 0) {
+        const emptyDiv = document.createElement("div");
+        emptyDiv.id = "loading";
+        emptyDiv.className = "text-center p-4 text-[#888888] text-sm";
+        emptyDiv.textContent = `NO ${type.toUpperCase()} YET. BE THE FIRST!`;
+        fragment.appendChild(emptyDiv);
+      } else {
+        let lastUserId = null;
+        let lastDateString = null;
+        
+        docs.forEach((docInstance) => {
+          const result = createMessageElement(docInstance, type, lastUserId, lastDateString);
+          
+          if (!result.skipped && result.elements) {
+            result.elements.forEach(el => fragment.appendChild(el));
+            lastUserId = result.lastUserId;
+            lastDateString = result.lastDateString;
+            
+            // Cache the message
+            messageCache.messages.set(result.docId, {
+              data: docInstance.data(),
+              timestamp: Date.now()
+            });
+          }
+        });
       }
       
-      const replyTextEl = document.createElement("div");
-      replyTextEl.className = "reply-text";
-      replyTextEl.textContent = data.replyTo.text;
+      // Scroll anchor
+      const scrollAnchor = document.createElement("div");
+      scrollAnchor.id = "scrollAnchor";
+      scrollAnchor.style.height = "1px";
+      scrollAnchor.style.width = "100%";
+      fragment.appendChild(scrollAnchor);
       
-      replyPreview.appendChild(replyAuthorEl);
-      replyPreview.appendChild(replyTextEl);
+      // Single DOM update
+      feedContainer.innerHTML = '';
+      feedContainer.appendChild(fragment);
       
-      replyPreview.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const escapedId = escapeSelector(data.replyTo.messageId);
-        const originalBubble = document.querySelector(`.message-bubble[data-id="${escapedId}"]`);
-        if (originalBubble) {
-          originalBubble.scrollIntoView({ behavior: "smooth", block: "center" });
-          originalBubble.style.backgroundColor = "rgba(255, 255, 255, 0.1)";
-          setTimeout(() => {
-            originalBubble.style.backgroundColor = "";
-          }, 1000);
+      // Re-observe scroll anchor
+      if (state.bottomObserver) {
+        state.bottomObserver.disconnect();
+        const anchor = document.getElementById('scrollAnchor');
+        if (anchor) {
+          state.bottomObserver.observe(anchor);
+        }
+      }
+      
+      // Scroll handling
+      if ((isFirstSnapshot || isRerender) && docs.length > 0) {
+        requestAnimationFrame(() => {
+          feedContainer.scrollTop = feedContainer.scrollHeight;
+          state.userIsAtBottom = true;
+        });
+      }
+      
+      // FIX: Schedule profile update after render
+      setTimeout(() => {
+        updateDisplayedUsernames();
+      }, 100);
+      
+      return;
+    }
+    
+    // FIX: Incremental update for subsequent changes
+    if (snapshot) {
+      const changes = snapshot.docChanges();
+      
+      if (changes.length === 0) return;
+      
+      // Handle removals
+      const removedIds = new Set();
+      changes.forEach(change => {
+        if (change.type === 'removed') {
+          removedIds.add(change.doc.id);
+          messageCache.messages.delete(change.doc.id);
         }
       });
       
-      bubble.appendChild(replyPreview);
-    }
-
-    const textElement = document.createElement("p");
-    textElement.className = "text-left";
-    
-    if (data.isPinned) {
-      const pinIcon = document.createElement("span");
-      pinIcon.className = "text-amber-400 mr-1";
-      pinIcon.setAttribute("aria-hidden", "true");
-      pinIcon.textContent = "📌";
-      textElement.appendChild(pinIcon);
-    }
-    
-    textElement.appendChild(document.createTextNode(text));
-    bubble.appendChild(textElement);
-
-    const footerDiv = document.createElement("div");
-    footerDiv.className = "bubble-footer";
-    footerDiv.style.justifyContent = isMine ? "flex-end" : "flex-start";
-    
-    const timeElement = document.createElement("span");
-    timeElement.className = "inner-timestamp";
-    timeElement.dataset.ts = data.timestamp ? String(data.timestamp.toMillis()) : String(Date.now());
-    
-    let timeText = formatMessageTime(messageDateObj);
-    if (data.edited) timeText += " (edited)";
-    timeElement.textContent = timeText;
-    
-    footerDiv.appendChild(timeElement);
-    bubble.appendChild(footerDiv);
-
-    const docReactions = data.reactions || {};
-    const chipsContainer = document.createElement("div");
-    chipsContainer.className = "reaction-chips-container";
-    let hasChips = false;
-    
-    Object.keys(REACTION_TYPES).forEach(rtype => {
-      const userIds = docReactions[rtype] || [];
-      if (userIds.length > 0) {
-        hasChips = true;
-        const chip = document.createElement("div");
-        chip.className = "reaction-chip";
-        
-        const hasReacted = userIds.includes(state.currentUserId);
-        if (hasReacted) chip.classList.add("user-reacted");
-        
-        const emojiSpan = document.createElement("span");
-        emojiSpan.textContent = REACTION_TYPES[rtype];
-        
-        const countSpan = document.createElement("span");
-        countSpan.textContent = ` ${userIds.length}`;
-        
-        chip.appendChild(emojiSpan);
-        chip.appendChild(countSpan);
-        
-        chip.onclick = (e) => {
-          e.stopPropagation();
-          toggleReaction(docInstance.id, type, rtype, hasReacted);
-        };
-        
-        chipsContainer.appendChild(chip);
+      if (removedIds.size > 0) {
+        removedIds.forEach(id => {
+          const escapedId = escapeSelector(id);
+          const element = feedContainer.querySelector(`.message-bubble[data-id="${escapedId}"]`);
+          if (element) {
+            const alignWrapper = element.closest('.flex.w-full');
+            if (alignWrapper) {
+              alignWrapper.remove();
+            }
+          }
+        });
       }
-    });
-    
-    if (hasChips) {
-      bubble.appendChild(chipsContainer);
-      bubble.classList.add("has-reactions");
-    }
-
-    const replyBtn = document.createElement("button");
-    replyBtn.type = "button";
-    replyBtn.className = "side-action-btn";
-    replyBtn.setAttribute("aria-label", "Reply to message");
-    replyBtn.textContent = "↩";
-    replyBtn.onclick = (e) => {
-      e.stopPropagation();
-      startReplyMode(bubble.dataset);
-    };
-
-    const reactBtn = document.createElement("button");
-    reactBtn.type = "button";
-    reactBtn.className = "side-action-btn";
-    reactBtn.setAttribute("aria-label", "Add reaction");
-    reactBtn.textContent = "♡";
-
-    const picker = document.createElement("div");
-    picker.className = "reaction-picker hidden";
-    picker.setAttribute("role", "menu");
-    
-    Object.entries(REACTION_TYPES).forEach(([rtype, emoji]) => {
-      const opt = document.createElement("span");
-      opt.className = "reaction-option";
-      opt.setAttribute("role", "menuitem");
-      opt.textContent = emoji;
-      opt.onclick = (e) => {
-        e.stopPropagation();
-        const hasReacted = (docReactions[rtype] || []).includes(state.currentUserId);
-        toggleReaction(docInstance.id, type, rtype, hasReacted);
-        picker.classList.add("hidden");
-        picker.remove();
-      };
-      picker.appendChild(opt);
-    });
-
-    reactBtn.onclick = (e) => {
-      e.stopPropagation();
       
-      document.querySelectorAll(".reaction-picker").forEach(p => {
-        p.classList.add("hidden");
-        p.remove();
+      // Handle additions
+      const addedDocs = changes.filter(c => c.type === 'added').map(c => c.doc);
+      
+      if (addedDocs.length > 0) {
+        const fragment = document.createDocumentFragment();
+        let lastUserId = null;
+        let lastDateString = null;
+        
+        // Get last rendered message info
+        const lastBubble = feedContainer.querySelector('.message-bubble:last-of-type');
+        if (lastBubble) {
+          lastUserId = lastBubble.dataset.userId;
+          const ts = parseInt(lastBubble.dataset.timestamp, 10);
+          if (ts) {
+            lastDateString = new Date(ts).toDateString();
+          }
+        }
+        
+        addedDocs.forEach(docInstance => {
+          const result = createMessageElement(docInstance, type, lastUserId, lastDateString);
+          
+          if (!result.skipped && result.elements) {
+            result.elements.forEach(el => fragment.appendChild(el));
+            lastUserId = result.lastUserId;
+            lastDateString = result.lastDateString;
+            
+            messageCache.messages.set(result.docId, {
+              data: docInstance.data(),
+              timestamp: Date.now()
+            });
+          }
+        });
+        
+        // Insert before scroll anchor
+        const scrollAnchor = document.getElementById('scrollAnchor');
+        if (scrollAnchor) {
+          feedContainer.insertBefore(fragment, scrollAnchor);
+        } else {
+          feedContainer.appendChild(fragment);
+        }
+        
+        // Check if we should scroll
+        const lastDoc = addedDocs[addedDocs.length - 1];
+        const isOwnMessage = lastDoc && lastDoc.data().userId === state.currentUserId;
+        
+        if (isOwnMessage || wasAtBottom) {
+          requestAnimationFrame(() => {
+            feedContainer.scrollTop = feedContainer.scrollHeight;
+            state.userIsAtBottom = true;
+            state.unreadMessages = 0;
+            updateScrollButton();
+          });
+        } else {
+          state.unreadMessages += addedDocs.length;
+          updateScrollButton();
+        }
+        
+        // FIX: Schedule profile update for new messages
+        setTimeout(() => {
+          updateDisplayedUsernames();
+        }, 100);
+      }
+      
+      // Handle modifications (reactions, edits, pins)
+      const modifiedDocs = changes.filter(c => c.type === 'modified');
+      
+      modifiedDocs.forEach(change => {
+        const docId = change.doc.id;
+        const data = change.doc.data();
+        const escapedId = escapeSelector(docId);
+        const existingBubble = feedContainer.querySelector(`.message-bubble[data-id="${escapedId}"]`);
+        
+        if (existingBubble) {
+          // Update text if edited
+          const textEl = existingBubble.querySelector('p.text-left');
+          if (textEl) {
+            const pinIcon = textEl.querySelector('.text-amber-400');
+            textEl.textContent = '';
+            
+            if (data.isPinned) {
+              const newPinIcon = document.createElement("span");
+              newPinIcon.className = "text-amber-400 mr-1";
+              newPinIcon.textContent = "📌";
+              textEl.appendChild(newPinIcon);
+            }
+            
+            textEl.appendChild(document.createTextNode(data.text || "..."));
+          }
+          
+          // Update timestamp if edited
+          const timeEl = existingBubble.querySelector('.inner-timestamp');
+          if (timeEl && data.edited) {
+            const ts = parseInt(timeEl.dataset.ts, 10);
+            if (ts) {
+              timeEl.textContent = formatMessageTime(new Date(ts)) + " (edited)";
+            }
+          }
+          
+          // Update reactions
+          const existingChips = existingBubble.querySelector('.reaction-chips-container');
+          if (existingChips) {
+            existingChips.remove();
+            existingBubble.classList.remove('has-reactions');
+          }
+          
+          const docReactions = data.reactions || {};
+          let hasChips = false;
+          const chipsContainer = document.createElement("div");
+          chipsContainer.className = "reaction-chips-container";
+          
+          Object.keys(REACTION_TYPES).forEach(rtype => {
+            const userIds = docReactions[rtype] || [];
+            if (userIds.length > 0) {
+              hasChips = true;
+              const chip = document.createElement("div");
+              chip.className = "reaction-chip";
+              
+              const hasReacted = userIds.includes(state.currentUserId);
+              if (hasReacted) chip.classList.add("user-reacted");
+              
+              const emojiSpan = document.createElement("span");
+              emojiSpan.textContent = REACTION_TYPES[rtype];
+              
+              const countSpan = document.createElement("span");
+              countSpan.textContent = ` ${userIds.length}`;
+              
+              chip.appendChild(emojiSpan);
+              chip.appendChild(countSpan);
+              
+              chip.onclick = (e) => {
+                e.stopPropagation();
+                toggleReaction(docId, type, rtype, hasReacted);
+              };
+              
+              chipsContainer.appendChild(chip);
+            }
+          });
+          
+          if (hasChips) {
+            existingBubble.appendChild(chipsContainer);
+            existingBubble.classList.add("has-reactions");
+          }
+          
+          // Update pin status
+          if (data.isPinned) {
+            existingBubble.classList.add("pinned");
+          } else {
+            existingBubble.classList.remove("pinned");
+          }
+          
+          existingBubble.dataset.isPinned = String(data.isPinned || false);
+          
+          // Update cache
+          messageCache.messages.set(docId, {
+            data: data,
+            timestamp: Date.now()
+          });
+        }
       });
-      
-      const rect = reactBtn.getBoundingClientRect();
-      picker.style.top = `${rect.top - 60}px`;
-      
-      if (window.innerWidth < 640) {
-        picker.style.left = "50%";
-        picker.style.transform = "translateX(-50%)";
-      } else {
-        picker.style.left = `${rect.left}px`;
-      }
-      
-      picker.classList.remove("hidden");
-      document.body.appendChild(picker);
-    };
-
-    const bubbleWrapper = document.createElement("div");
-    bubbleWrapper.className = `bubble-wrapper ${isMine ? "my-bubble-wrapper" : ""} ${isConsecutive ? "mt-0.5" : "mt-2"}`;
-    bubbleWrapper.appendChild(kebabBtn);
-    bubbleWrapper.appendChild(bubble);
-
-    if (isMine) {
-      row.appendChild(reactBtn);
-      row.appendChild(replyBtn);
-      row.appendChild(bubbleWrapper);
-    } else {
-      row.appendChild(bubbleWrapper);
-      row.appendChild(replyBtn);
-      row.appendChild(reactBtn);
     }
-    
-    alignWrapper.appendChild(row);
-    feedContainer.appendChild(alignWrapper);
-  });
-  
-  const scrollAnchor = document.createElement("div");
-  scrollAnchor.id = "scrollAnchor";
-  scrollAnchor.style.height = "1px";
-  scrollAnchor.style.width = "100%";
-  feedContainer.appendChild(scrollAnchor);
-  
-  if (state.bottomObserver) {
-    state.bottomObserver.disconnect();
-    state.bottomObserver.observe(scrollAnchor);
-  }
-
-  const hasNewMessages = snapshot && 
-    snapshot.docChanges().some(change => change.type === 'added');
-  
-  if (isFirstSnapshot && docs.length > 0) {
-    feedContainer.style.scrollBehavior = "auto";
-    scrollToBottom();
-    requestAnimationFrame(() => {
-      scrollToBottom();
-      feedContainer.style.scrollBehavior = "smooth";
-    });
-  } else if (hasNewMessages) {
-    const lastDoc = docs[docs.length - 1];
-    const isOwnMessage = lastDoc && lastDoc.data().userId === state.currentUserId;
-    
-    if (isOwnMessage || wasAtBottom) {
-      scrollToBottom();
-    } else {
-      state.unreadMessages++;
-      updateScrollButton();
-    }
-  } else {
-    feedContainer.scrollTop = prevScrollTop;
+  } finally {
+    state.isRendering = false;
   }
 }
 
@@ -3421,35 +3822,29 @@ async function postMessage(collectionRef, input) {
     return;
   }
   
-  // Check device ban before posting
   if (state.isDeviceBanned) {
     showToast("Your device has been banned.", "error");
     return;
   }
   
-  // Check user ban
   if (state.isBanned) {
     showToast("You have been banned.", "error");
     return;
   }
   
-  // Check spam status BEFORE anything else
   const spamCheck = checkSpamStatus();
   
   if (!spamCheck.allowed) {
     if (spamCheck.shouldBan) {
-      // User hit spam limit - auto-ban them
       await autoBanForSpam();
       return;
     }
   }
   
-  // Show warning if approaching limit
   if (spamCheck.warning) {
     showSpamWarning(spamCheck.warning);
   }
   
-  // Verify ban status from Firestore
   if (state.db && state.currentUserId) {
     try {
       const banRef = doc(state.db, "banned_users", state.currentUserId);
@@ -3503,7 +3898,6 @@ async function postMessage(collectionRef, input) {
     
     await addDoc(collectionRef, messageData);
 
-    // Record this message for spam tracking
     recordMessage();
 
     await setDoc(doc(state.db, "users", state.currentUserId), {
@@ -3513,7 +3907,6 @@ async function postMessage(collectionRef, input) {
     input.value = "";
     cancelReplyMode();
     updateTypingStatus(false);
-    scrollToBottom();
     
     const counter = input === chatInput ? chatCharCount : confessionCharCount;
     updateCharacterCounter(input, counter);
@@ -3589,7 +3982,8 @@ document.addEventListener("click", (e) => {
   }
 });
 
-setInterval(() => {
+// Throttled timestamp updates
+const updateTimestamps = throttle(() => {
   document.querySelectorAll('.inner-timestamp').forEach(el => {
     const ts = parseInt(el.dataset.ts, 10);
     if (ts > 0) {
@@ -3598,6 +3992,17 @@ setInterval(() => {
     }
   });
 }, 60000);
+
+setInterval(updateTimestamps, 60000);
+
+// FIX: Periodic profile update check
+setInterval(() => {
+  if (state.pendingProfileLoads.size > 0 || state.failedProfileLoads.size > 0) {
+    loadPendingProfiles();
+  }
+  // Also periodically update displayed usernames in case profiles loaded
+  updateDisplayedUsernames();
+}, 3000);
 
 scrollToBottomBtn?.addEventListener("click", scrollToBottom);
 
@@ -3611,20 +4016,20 @@ chatForm?.addEventListener("submit", (e) => {
   postMessage(state.chatCollection, chatInput);
 });
 
-navConfessions?.addEventListener("click", () => showPage("confessions"));
-navChat?.addEventListener("click", () => showPage("chat"));
+navConfessions?.addEventListener("click", () => showPageUI("confessions"));
+navChat?.addEventListener("click", () => showPageUI("chat"));
 
 navConfessions?.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") {
     e.preventDefault();
-    showPage("confessions");
+    showPageUI("confessions");
   }
 });
 
 navChat?.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") {
     e.preventDefault();
-    showPage("chat");
+    showPageUI("chat");
   }
 });
 
@@ -3719,6 +4124,8 @@ document.addEventListener("visibilitychange", () => {
       state.unreadMessages = 0;
       updateScrollButton();
     }
+    // FIX: Refresh profiles when tab becomes visible
+    retryFailedProfileLoads();
   }
 });
 
@@ -3730,6 +4137,8 @@ window.addEventListener("beforeunload", () => {
 
 window.addEventListener('unload', () => {
   cleanupAllListeners();
+  messageCache.messages.clear();
+  elementPool.clear();
 });
 
 // ============================================================
