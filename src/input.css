@@ -1366,3 +1366,41 @@ body.selection-mode .message-bubble {
 #spam-warning-toast {
   font-family: 'Inter', sans-serif;
 }
+
+/* ============================
+   36. PERFORMANCE OPTIMIZATIONS
+   ============================ */
+
+/* Disable animation for messages already in DOM (incremental updates) */
+.message-bubble.rendered {
+  animation: none;
+}
+
+/* Reduce paint complexity for large message lists */
+#feedContainer {
+  contain: layout style;
+  will-change: scroll-position;
+}
+
+/* Optimize scrolling performance */
+.message-wrapper {
+  contain: layout;
+}
+
+/* Reduce animation work when user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .message-bubble {
+    animation: none !important;
+  }
+  
+  #feedContainer {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* GPU acceleration for smooth scrolling on mobile */
+@supports (overflow: overlay) {
+  #feedContainer {
+    overflow: overlay;
+  }
+}
