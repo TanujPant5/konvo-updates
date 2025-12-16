@@ -11,7 +11,7 @@
     
     <!-- SEO & PWA Meta Tags -->
     <meta name="description" content="Konvo - Anonymous chat platform for open conversations. Share confessions and chat anonymously." />
-    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="theme-color" content="#050505" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Konvo" />
@@ -35,7 +35,7 @@
     
     <!-- Google Fonts -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     
@@ -43,8 +43,8 @@
     <link rel="stylesheet" href="dist/style.css" />
   </head>
   
-  <body class="flex flex-col bg-[#0a0a0a] h-dvh">
-    <!-- Ban Check Overlay (shows while checking device status) -->
+  <body class="flex flex-col h-dvh cyberpunk-body">
+    <!-- Ban Check Overlay -->
     <div id="banCheckOverlay" class="ban-check-overlay">
       <div class="text-center">
         <div class="ban-check-text">VERIFYING ACCESS...</div>
@@ -52,18 +52,17 @@
     </div>
 
     <!-- Header -->
-    <header
-      class="flex justify-between items-center px-3 py-3 border-b border-[#333333] bg-[#0a0a0a] gap-2 z-10 h-14"
-    >
-      <h1 class="text-base sm:text-2xl font-bold text-white tracking-tight shrink-0">
+    <header class="cyberpunk-header flex justify-between items-center px-3 py-3 gap-2 z-10 h-14">
+      <h1 class="text-base sm:text-2xl font-bold tracking-tight shrink-0 cyberpunk-logo">
         KONVO
       </h1>
       
       <div class="flex items-center gap-2 overflow-visible flex-1 justify-end">
-        <nav class="flex text-[10px] sm:text-base font-medium gap-1 sm:gap-4 shrink">
+        <!-- Navigation -->
+        <nav class="flex text-[10px] sm:text-base font-medium gap-1 shrink">
           <div 
             id="navConfessions" 
-            class="nav-item px-2 py-1"
+            class="nav-item nav-item-confession px-2 py-1"
             role="button"
             tabindex="0"
             aria-label="View Confessions"
@@ -72,7 +71,7 @@
           </div>
           <div 
             id="navChat" 
-            class="nav-item active px-2 py-1"
+            class="nav-item nav-item-chat active px-2 py-1"
             role="button"
             tabindex="0"
             aria-label="View Chat"
@@ -81,12 +80,13 @@
           </div>
         </nav>
 
+        <!-- Header Actions -->
         <div class="flex items-center gap-1 sm:gap-2 shrink-0">
           <!-- Notification Button -->
           <button
             id="notificationButton"
             type="button"
-            class="p-2 rounded-full hover:bg-[#262626] transition text-[#ededed] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            class="cyberpunk-icon-btn p-2 transition flex items-center justify-center focus:outline-none"
             title="Toggle Notifications"
             aria-label="Toggle Notifications"
           >
@@ -114,7 +114,7 @@
           <button
             id="profileButton"
             type="button"
-            class="p-2 rounded-full hover:bg-[#262626] transition text-[#ededed] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            class="cyberpunk-icon-btn p-2 transition flex items-center justify-center focus:outline-none"
             title="Edit Profile"
             aria-label="Edit Profile"
           >
@@ -140,31 +140,31 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col overflow-hidden relative">
+    <main class="flex-1 flex flex-col overflow-hidden relative cyberpunk-main">
       <!-- Pinned Message Bar -->
       <div 
         id="pinnedMessageBar" 
-        class="hidden flex items-center gap-3 px-4 py-2 bg-[#1c1c1c] border-b border-[#333] z-20 shadow-lg cursor-pointer hover:bg-[#262626] transition-colors shrink-0"
+        class="hidden flex items-center gap-3 px-4 py-2 z-20 cursor-pointer transition-colors shrink-0 cyberpunk-pinned-bar"
         role="button"
         tabindex="0"
         aria-label="View pinned message"
       >
         <span class="text-lg shrink-0" aria-hidden="true">📌</span>
         <div class="flex flex-col overflow-hidden">
-          <span class="text-[10px] text-[#fbbf24] font-bold uppercase tracking-wider">Pinned Message</span>
-          <p id="pinnedMessageText" class="text-sm text-white truncate"></p>
+          <span class="text-[10px] font-bold uppercase tracking-wider cyberpunk-warning-text">Pinned Message</span>
+          <p id="pinnedMessageText" class="text-sm truncate cyberpunk-text-primary"></p>
         </div>
       </div>
 
       <!-- Feed Container -->
       <div
         id="feedContainer"
-        class="flex-1 flex flex-col p-2 sm:p-4 gap-2 overflow-y-auto"
+        class="flex-1 flex flex-col p-2 sm:p-4 gap-2 overflow-y-auto cyberpunk-feed"
         role="log"
         aria-live="polite"
         aria-label="Messages"
       >
-        <div id="loading" class="text-center p-4 text-[#888888] text-sm">
+        <div id="loading" class="text-center p-4 text-sm">
           CONNECTING...
         </div>
       </div>
@@ -197,18 +197,18 @@
       <!-- Selection Bar -->
       <div
         id="selectionBar"
-        class="hidden flex justify-between items-center bg-[#1c1c1c] border-t border-[#333] p-3"
+        class="hidden flex justify-between items-center p-3 cyberpunk-selection-bar"
         role="toolbar"
         aria-label="Message selection actions"
       >
-        <span id="selectionCount" class="text-base text-white font-medium" aria-live="polite">
+        <span id="selectionCount" class="text-base font-medium cyberpunk-accent-text" aria-live="polite">
           0 selected
         </span>
-        <div class="flex gap-4">
+        <div class="flex gap-3">
           <button
             id="selectionCancel"
             type="button"
-            class="text-sm font-medium text-[#888888] hover:text-white transition"
+            class="text-sm font-medium transition"
             aria-label="Cancel selection"
           >
             CANCEL
@@ -216,7 +216,7 @@
           <button
             id="selectionDelete"
             type="button"
-            class="text-sm font-bold text-red-500 hover:text-red-400 transition"
+            class="text-sm font-bold transition"
             aria-label="Delete selected messages"
           >
             DELETE
@@ -225,7 +225,7 @@
       </div>
 
       <!-- Reply Bar -->
-      <div id="replyBar" role="status" aria-label="Replying to message">
+      <div id="replyBar" class="cyberpunk-reply-bar" role="status" aria-label="Replying to message">
         <div class="reply-info">
           <div class="reply-author" id="replyAuthor"></div>
           <div class="reply-text" id="replyText"></div>
@@ -243,7 +243,7 @@
       <!-- Typing Indicator -->
       <div 
         id="typingIndicator" 
-        class="px-4 h-6 text-xs text-[#888]"
+        class="px-4 h-6 text-xs cyberpunk-typing-text"
         aria-live="polite"
         aria-atomic="true"
       >
@@ -253,7 +253,7 @@
       <!-- Confession Form -->
       <form 
         id="confessionForm" 
-        class="hidden gap-3 border-t border-[#333] relative"
+        class="hidden gap-3 relative cyberpunk-form cyberpunk-form-confession"
         aria-label="Post a confession"
       >
         <label for="confessionInput" class="sr-only">Type your confession</label>
@@ -262,8 +262,8 @@
           <textarea
             id="confessionInput"
             rows="1"
-            class="w-full resize-none focus:outline-none text-sm pr-16"
-            placeholder="Type your confession..."
+            class="w-full resize-none focus:outline-none text-sm pr-16 cyberpunk-input cyberpunk-input-confession"
+            placeholder="Share your confession anonymously..."
             required
             maxlength="500"
             autocomplete="off"
@@ -282,16 +282,16 @@
         <button
           id="confessionButton"
           type="submit"
-          class="px-5 py-2 rounded-lg font-bold text-sm bg-white text-black hover:bg-[#cccccc] transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white"
+          class="cyberpunk-btn-confession px-5 py-2 rounded-lg font-bold text-sm transition"
         >
-          POST
+          CONFESS
         </button>
       </form>
 
       <!-- Chat Form -->
       <form 
         id="chatForm" 
-        class="flex gap-3 border-t border-[#333] relative"
+        class="flex gap-3 relative cyberpunk-form cyberpunk-form-chat"
         aria-label="Send a message"
       >
         <label for="chatInput" class="sr-only">Type a message</label>
@@ -300,7 +300,7 @@
           <textarea
             id="chatInput"
             rows="1"
-            class="w-full resize-none focus:outline-none text-sm pr-16"
+            class="w-full resize-none focus:outline-none text-sm pr-16 cyberpunk-input cyberpunk-input-chat"
             placeholder="Type a message..."
             required
             maxlength="500"
@@ -320,7 +320,7 @@
         <button
           id="chatButton"
           type="submit"
-          class="px-5 py-2 rounded-lg font-bold text-sm bg-white text-black hover:bg-[#cccccc] transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white"
+          class="cyberpunk-btn-primary px-5 py-2 rounded-lg font-bold text-sm transition"
         >
           SEND
         </button>
@@ -336,22 +336,22 @@
       aria-labelledby="profileModalTitle"
       aria-hidden="true"
     >
-      <div
-        class="modal-content bg-[#1c1c1c] p-6 rounded-xl border border-[#333] w-full max-w-sm flex flex-col gap-4 shadow-2xl"
-      >
-        <h2 id="profileModalTitle" class="text-xl font-bold text-white">Edit Profile</h2>
+      <div class="modal-content cyberpunk-modal cyberpunk-modal-purple p-6 rounded-xl w-full max-w-sm flex flex-col gap-4">
+        <h2 id="profileModalTitle" class="text-xl font-bold cyberpunk-modal-title-purple">
+          <span class="modal-icon">👤</span> Edit Profile
+        </h2>
         <div class="flex flex-col gap-2">
           <label
             for="modalUsernameInput"
-            class="text-xs font-medium text-[#888]"
+            class="text-xs font-medium cyberpunk-text-secondary uppercase tracking-wider"
           >
-            USERNAME
+            Username
           </label>
           <input
             type="text"
             id="modalUsernameInput"
-            placeholder="Enter username"
-            class="w-full p-3 rounded-lg focus:outline-none bg-[#0a0a0a] text-white border border-[#333] text-sm focus-visible:ring-2 focus-visible:ring-white"
+            placeholder="Enter your username"
+            class="w-full p-3 rounded-lg focus:outline-none text-sm cyberpunk-modal-input cyberpunk-input-purple"
             maxlength="30"
             autocomplete="off"
             autocapitalize="off"
@@ -364,14 +364,14 @@
           <button
             id="modalCloseButton"
             type="button"
-            class="flex-1 px-4 py-2 rounded-lg font-medium text-sm bg-transparent border border-[#333] text-[#888] hover:text-white hover:border-white transition"
+            class="flex-1 px-4 py-2 rounded-lg font-medium text-sm cyberpunk-btn-secondary transition"
           >
             Cancel
           </button>
           <button
             id="modalSaveButton"
             type="button"
-            class="flex-1 px-4 py-2 rounded-lg font-bold text-sm bg-white text-black hover:bg-[#ddd] transition"
+            class="flex-1 px-4 py-2 rounded-lg font-bold text-sm cyberpunk-btn-purple transition"
           >
             Save
           </button>
@@ -388,15 +388,15 @@
       aria-labelledby="editModalTitle"
       aria-hidden="true"
     >
-      <div
-        class="modal-content bg-[#1c1c1c] p-6 rounded-xl border border-[#333] w-full max-w-sm flex flex-col gap-4 shadow-2xl"
-      >
-        <h2 id="editModalTitle" class="text-xl font-bold text-white">Edit Message</h2>
+      <div class="modal-content cyberpunk-modal cyberpunk-modal-cyan p-6 rounded-xl w-full max-w-sm flex flex-col gap-4">
+        <h2 id="editModalTitle" class="text-xl font-bold cyberpunk-modal-title-cyan">
+          <span class="modal-icon">✏️</span> Edit Message
+        </h2>
         <label for="modalEditTextArea" class="sr-only">Edit your message</label>
         <textarea
           id="modalEditTextArea"
           rows="4"
-          class="w-full p-3 rounded-lg resize-none focus:outline-none bg-[#0a0a0a] text-white border border-[#333] text-sm focus-visible:ring-2 focus-visible:ring-white"
+          class="w-full p-3 rounded-lg resize-none focus:outline-none text-sm cyberpunk-modal-input cyberpunk-input-cyan"
           maxlength="500"
           spellcheck="true"
         ></textarea>
@@ -404,16 +404,16 @@
           <button
             id="editModalCancelButton"
             type="button"
-            class="flex-1 px-4 py-2 rounded-lg font-medium text-sm bg-transparent border border-[#333] text-[#888] hover:text-white hover:border-white transition"
+            class="flex-1 px-4 py-2 rounded-lg font-medium text-sm cyberpunk-btn-secondary transition"
           >
             Cancel
           </button>
           <button
             id="editModalSaveButton"
             type="button"
-            class="flex-1 px-4 py-2 rounded-lg font-bold text-sm bg-white text-black hover:bg-[#ddd] transition"
+            class="flex-1 px-4 py-2 rounded-lg font-bold text-sm cyberpunk-btn-cyan transition"
           >
-            Save
+            Save Changes
           </button>
         </div>
       </div>
@@ -429,16 +429,16 @@
       aria-describedby="confirmModalText"
       aria-hidden="true"
     >
-      <div
-        class="modal-content bg-[#1c1c1c] p-6 rounded-xl border border-[#333] w-full max-w-sm flex flex-col gap-4 shadow-2xl"
-      >
-        <h2 id="confirmModalTitle" class="text-lg font-bold text-white">Confirm</h2>
-        <p id="confirmModalText" class="text-sm text-[#888]">Are you sure?</p>
+      <div class="modal-content cyberpunk-modal cyberpunk-modal-danger p-6 rounded-xl w-full max-w-sm flex flex-col gap-4">
+        <h2 id="confirmModalTitle" class="text-lg font-bold cyberpunk-modal-title-danger">
+          <span class="modal-icon">⚠️</span> Confirm Action
+        </h2>
+        <p id="confirmModalText" class="text-sm cyberpunk-text-secondary">Are you sure you want to proceed?</p>
         <div class="flex gap-3 mt-4">
           <button
             id="confirmModalNoButton"
             type="button"
-            class="flex-1 px-4 py-2 rounded-lg font-medium text-sm bg-transparent border border-[#333] text-[#888] hover:text-white hover:border-white transition"
+            class="flex-1 px-4 py-2 rounded-lg font-medium text-sm cyberpunk-btn-secondary transition"
           >
             Cancel
           </button>
@@ -452,16 +452,21 @@
     <!-- Context Menu -->
     <div 
       id="contextMenu"
+      class="cyberpunk-context-menu"
       role="menu"
       aria-label="Message actions"
     >
       <ul role="none">
-        <li id="menuEdit" role="menuitem" tabindex="-1">Edit Message</li>
-        <li id="menuDelete" role="menuitem" tabindex="-1" class="text-red-500 hover:text-red-400">
-          Delete Message
+        <li id="menuEdit" role="menuitem" tabindex="-1" class="menu-item-edit">
+          <span class="menu-icon">✏️</span> Edit Message
+        </li>
+        <li id="menuDelete" role="menuitem" tabindex="-1" class="menu-item-delete">
+          <span class="menu-icon">🗑️</span> Delete Message
         </li>
         <li class="separator" role="separator"></li>
-        <li id="menuSelect" role="menuitem" tabindex="-1">Select</li>
+        <li id="menuSelect" role="menuitem" tabindex="-1" class="menu-item-select">
+          <span class="menu-icon">☑️</span> Select
+        </li>
       </ul>
     </div>
 

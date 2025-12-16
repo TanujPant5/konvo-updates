@@ -4,46 +4,155 @@
 @tailwind utilities;
 
 /* ============================================================
-   KONVO - OBSIDIAN THEME
-   Version: 2.2 (CSP Compliant)
+   KONVO - VIBRANT CYBERPUNK THEME
+   Version: 5.1 (Complete Border & Shadow Fix)
    ============================================================ */
-
-/* Import your existing custom styles below @tailwind directives */
 
 /* ============================
    1. CSS CUSTOM PROPERTIES
    ============================ */
 :root {
-  /* Color Palette */
-  --bg-color: #0a0a0a;
-  --surface: #1c1c1c;
-  --border-color: #333333;
-  --text-main: #ededed;
-  --text-muted: #888888;
-  --accent: #ffffff;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --warning: #fbbf24;
-  --highlight: #262626;
-
-  /* Animation Timing */
+  /* Core Background Colors */
+  --bg-void: #050508;
+  --bg-dark: #0a0a0f;
+  --surface: #0f0f15;
+  --surface-elevated: #14141c;
+  --surface-hover: #1a1a25;
+  
+  /* ===== VIBRANT COLOR PALETTE ===== */
+  
+  /* Primary - Neon Green */
+  --neon-green: #00ff9f;
+  --neon-green-dim: #00cc7f;
+  --neon-green-glow: rgba(0, 255, 159, 0.5);
+  --neon-green-subtle: rgba(0, 255, 159, 0.1);
+  --neon-green-medium: rgba(0, 255, 159, 0.2);
+  
+  /* Secondary - Hot Pink/Magenta */
+  --neon-pink: #ff0080;
+  --neon-pink-dim: #cc0066;
+  --neon-pink-glow: rgba(255, 0, 128, 0.5);
+  --neon-pink-subtle: rgba(255, 0, 128, 0.1);
+  --neon-pink-medium: rgba(255, 0, 128, 0.2);
+  
+  /* Tertiary - Electric Cyan */
+  --neon-cyan: #00f0ff;
+  --neon-cyan-dim: #00c0cc;
+  --neon-cyan-glow: rgba(0, 240, 255, 0.5);
+  --neon-cyan-subtle: rgba(0, 240, 255, 0.1);
+  --neon-cyan-medium: rgba(0, 240, 255, 0.2);
+  
+  /* Purple */
+  --neon-purple: #bf5fff;
+  --neon-purple-dim: #9933ff;
+  --neon-purple-glow: rgba(191, 95, 255, 0.5);
+  --neon-purple-subtle: rgba(191, 95, 255, 0.1);
+  --neon-purple-medium: rgba(191, 95, 255, 0.2);
+  
+  /* Orange */
+  --neon-orange: #ff6b2b;
+  --neon-orange-dim: #e55a1f;
+  --neon-orange-glow: rgba(255, 107, 43, 0.5);
+  --neon-orange-subtle: rgba(255, 107, 43, 0.1);
+  
+  /* Yellow/Gold */
+  --neon-yellow: #ffcc00;
+  --neon-yellow-dim: #e6b800;
+  --neon-yellow-glow: rgba(255, 204, 0, 0.5);
+  --neon-yellow-subtle: rgba(255, 204, 0, 0.1);
+  
+  /* Red */
+  --neon-red: #ff3355;
+  --neon-red-dim: #cc2944;
+  --neon-red-glow: rgba(255, 51, 85, 0.5);
+  --neon-red-subtle: rgba(255, 51, 85, 0.1);
+  
+  /* ===== BORDERS ===== */
+  --border-dark: #1a1a22;
+  --border-default: #2a2a35;
+  --border-light: #3a3a48;
+  --border-hover: #4a4a58;
+  --border-focus: var(--neon-cyan);
+  
+  /* ===== TEXT COLORS ===== */
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0b0;
+  --text-muted: #606070;
+  --text-dim: #404050;
+  
+  /* ===== GRADIENTS ===== */
+  --gradient-rainbow: linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 25%, var(--neon-cyan) 50%, var(--neon-green) 75%, var(--neon-yellow) 100%);
+  --gradient-primary: linear-gradient(135deg, var(--neon-green) 0%, var(--neon-cyan) 100%);
+  --gradient-secondary: linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 100%);
+  --gradient-warm: linear-gradient(135deg, var(--neon-orange) 0%, var(--neon-pink) 100%);
+  --gradient-cool: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%);
+  --gradient-header: linear-gradient(90deg, var(--neon-green) 0%, var(--neon-cyan) 50%, var(--neon-purple) 100%);
+  
+  /* ===== GLOW EFFECTS ===== */
+  --glow-green: 0 0 10px var(--neon-green-glow), 0 0 20px var(--neon-green-glow);
+  --glow-green-soft: 0 0 5px var(--neon-green-glow), 0 0 10px var(--neon-green-glow);
+  --glow-green-intense: 0 0 15px var(--neon-green), 0 0 30px var(--neon-green), 0 0 45px var(--neon-green);
+  
+  --glow-pink: 0 0 10px var(--neon-pink-glow), 0 0 20px var(--neon-pink-glow);
+  --glow-pink-soft: 0 0 5px var(--neon-pink-glow), 0 0 10px var(--neon-pink-glow);
+  
+  --glow-cyan: 0 0 10px var(--neon-cyan-glow), 0 0 20px var(--neon-cyan-glow);
+  --glow-cyan-soft: 0 0 5px var(--neon-cyan-glow), 0 0 10px var(--neon-cyan-glow);
+  
+  --glow-purple: 0 0 10px var(--neon-purple-glow), 0 0 20px var(--neon-purple-glow);
+  --glow-purple-soft: 0 0 5px var(--neon-purple-glow), 0 0 10px var(--neon-purple-glow);
+  
+  --glow-orange: 0 0 10px var(--neon-orange-glow), 0 0 20px var(--neon-orange-glow);
+  --glow-yellow: 0 0 10px var(--neon-yellow-glow), 0 0 20px var(--neon-yellow-glow);
+  --glow-red: 0 0 10px var(--neon-red-glow), 0 0 20px var(--neon-red-glow);
+  --glow-red-soft: 0 0 5px var(--neon-red-glow), 0 0 10px var(--neon-red-glow);
+  
+  --glow-rainbow: 0 0 10px var(--neon-pink-glow), 0 0 20px var(--neon-cyan-glow), 0 0 30px var(--neon-green-glow);
+  
+  /* ===== TEXT GLOW ===== */
+  --text-glow-green: 0 0 5px var(--neon-green-glow), 0 0 10px var(--neon-green-glow);
+  --text-glow-pink: 0 0 5px var(--neon-pink-glow), 0 0 10px var(--neon-pink-glow);
+  --text-glow-cyan: 0 0 5px var(--neon-cyan-glow), 0 0 10px var(--neon-cyan-glow);
+  --text-glow-purple: 0 0 5px var(--neon-purple-glow), 0 0 10px var(--neon-purple-glow);
+  --text-glow-yellow: 0 0 5px var(--neon-yellow-glow), 0 0 10px var(--neon-yellow-glow);
+  --text-glow-red: 0 0 5px var(--neon-red-glow), 0 0 10px var(--neon-red-glow);
+  
+  /* ===== SHADOWS ===== */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.8);
+  
+  --shadow-green: 0 4px 20px rgba(0, 255, 159, 0.15);
+  --shadow-pink: 0 4px 20px rgba(255, 0, 128, 0.15);
+  --shadow-cyan: 0 4px 20px rgba(0, 240, 255, 0.15);
+  --shadow-purple: 0 4px 20px rgba(191, 95, 255, 0.15);
+  --shadow-red: 0 4px 20px rgba(255, 51, 85, 0.15);
+  
+  /* Inner shadows for depth */
+  --inner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  
+  /* ===== ANIMATION TIMING ===== */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-
-  /* Spacing */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-neon: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* ===== SPACING ===== */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
-
-  /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  
+  /* ===== BORDER RADIUS ===== */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
   --radius-full: 9999px;
-
-  /* Z-Index Layers */
+  
+  /* ===== Z-INDEX ===== */
   --z-base: 1;
   --z-dropdown: 100;
   --z-sticky: 200;
@@ -51,45 +160,28 @@
   --z-tooltip: 1100;
 }
 
-/* Add after your :root section */
+/* ============================
+   2. BASE STYLES
+   ============================ */
+
 html, body {
   height: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  min-height: 100svh;
 }
 
 @supports (height: 100dvh) {
-  body {
-    height: 100dvh;
-  }
+  body { height: 100dvh; }
 }
-/* ============================
-   PASTE THE REST OF YOUR style.css CONTENT HERE
-   (Everything from section 2 onwards)
-   ============================ */
 
-/* ... rest of your existing style.css ... */
-/* ============================
-   2. BASE STYLES & RESETS
-   ============================ */
-
-*,
-*::before,
-*::after {
+*, *::before, *::after {
   box-sizing: border-box;
-}
-
-html {
-  -moz-text-size-adjust: none;
-  -webkit-text-size-adjust: none;
-  text-size-adjust: none;
 }
 
 body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: var(--bg-color);
-  color: var(--text-main);
+  background: var(--bg-void);
+  color: var(--text-primary);
   overflow-x: hidden;
   line-height: 1.5;
   margin: 0;
@@ -97,16 +189,76 @@ body {
   overscroll-behavior: none;
 }
 
+.cyberpunk-body {
+  background: var(--bg-void);
+  position: relative;
+}
+
+/* Subtle gradient background */
+.cyberpunk-body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(191, 95, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(0, 240, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 0, 128, 0.02) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* ============================
-   3. SECURITY-FOCUSED STYLES
+   3. UTILITY CLASSES
    ============================ */
 
-button,
-a,
-input,
-textarea,
-[role="button"],
-[tabindex] {
+.cyberpunk-text-primary { color: var(--text-primary); }
+.cyberpunk-text-secondary { color: var(--text-secondary); }
+.cyberpunk-text-muted { color: var(--text-muted); }
+
+.cyberpunk-accent-text {
+  color: var(--neon-green);
+  text-shadow: var(--text-glow-green);
+}
+
+.cyberpunk-pink-text {
+  color: var(--neon-pink);
+  text-shadow: var(--text-glow-pink);
+}
+
+.cyberpunk-cyan-text {
+  color: var(--neon-cyan);
+  text-shadow: var(--text-glow-cyan);
+}
+
+.cyberpunk-purple-text {
+  color: var(--neon-purple);
+  text-shadow: var(--text-glow-purple);
+}
+
+.cyberpunk-warning-text {
+  color: var(--neon-yellow);
+  text-shadow: var(--text-glow-yellow);
+}
+
+.cyberpunk-danger-text,
+.cyberpunk-btn-danger-text {
+  color: var(--neon-red);
+  text-shadow: var(--text-glow-red);
+}
+
+.cyberpunk-typing-text {
+  color: var(--neon-purple);
+  text-shadow: var(--text-glow-purple);
+}
+
+/* ============================
+   4. SECURITY STYLES
+   ============================ */
+
+button, a, input, textarea, [role="button"], [tabindex] {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
 }
@@ -123,62 +275,45 @@ textarea,
   border: 0;
 }
 
-.no-select {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-a[target="_blank"]::after {
-  content: " ↗";
-  font-size: 0.75em;
-  opacity: 0.7;
-}
-
-[hidden],
-.hidden {
+[hidden], .hidden {
   display: none !important;
   pointer-events: none !important;
   visibility: hidden !important;
 }
 
-img {
-  -webkit-user-drag: none;
-  user-select: none;
-  pointer-events: auto;
-}
-
 /* ============================
-   4. SCROLLBAR STYLES
+   5. SCROLLBAR STYLES
    ============================ */
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-color);
+  background: var(--bg-dark);
+  border-radius: 5px;
+  border: 1px solid var(--border-default);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 3px;
-  transition: background 0.3s ease;
+  background: linear-gradient(180deg, var(--neon-purple-dim) 0%, var(--neon-cyan-dim) 100%);
+  border-radius: 5px;
+  border: 2px solid var(--bg-dark);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: linear-gradient(180deg, var(--neon-purple) 0%, var(--neon-cyan) 100%);
+  box-shadow: var(--glow-purple-soft);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #333 var(--bg-color);
+  scrollbar-color: var(--neon-purple-dim) var(--bg-dark);
 }
 
 /* ============================
-   5. FORM ELEMENTS
+   6. FORM ELEMENTS
    ============================ */
 
 textarea,
@@ -188,16 +323,16 @@ input[type="email"],
 input[type="password"] {
   font-family: "Inter", sans-serif;
   background-color: var(--surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  transition: all 0.2s ease;
+  border: 2px solid var(--border-default);
+  color: var(--text-primary);
+  transition: all 0.3s var(--ease-neon);
   font-size: 1rem;
+  border-radius: var(--radius-md);
 }
 
 textarea::placeholder,
 input::placeholder {
   color: var(--text-muted);
-  opacity: 1;
 }
 
 textarea:focus,
@@ -205,34 +340,16 @@ input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus {
   outline: none;
-  background-color: var(--highlight);
-  border-color: var(--text-muted);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
-}
-
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset !important;
-  -webkit-text-fill-color: var(--text-main) !important;
-  caret-color: var(--text-main);
+  background-color: var(--surface-elevated);
+  border-color: var(--neon-cyan);
+  box-shadow: var(--glow-cyan-soft), inset 0 0 20px var(--neon-cyan-subtle);
 }
 
 button {
   cursor: pointer;
-  border: 1px solid var(--border-color);
-  transition: all 0.2s ease;
-}
-
-button:hover:not(:disabled) {
-  background-color: var(--text-main);
-  color: var(--bg-color);
-  border-color: var(--text-main);
-  transform: translateY(-1px);
-}
-
-button:active:not(:disabled) {
-  transform: translateY(0);
+  border: 2px solid var(--border-default);
+  transition: all 0.3s var(--ease-neon);
+  border-radius: var(--radius-md);
 }
 
 button:disabled {
@@ -242,206 +359,502 @@ button:disabled {
 
 button:focus-visible,
 input:focus-visible,
-textarea:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--accent);
+textarea:focus-visible {
+  outline: 2px solid var(--neon-cyan);
   outline-offset: 2px;
 }
 
 /* ============================
-   6. ANIMATIONS
+   7. BUTTON VARIANTS
+   ============================ */
+
+/* Primary Green Button */
+.cyberpunk-btn-primary {
+  background: var(--neon-green);
+  color: var(--bg-void);
+  border: 2px solid var(--neon-green);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: var(--shadow-md), var(--glow-green-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.cyberpunk-btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.cyberpunk-btn-primary:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.cyberpunk-btn-primary:hover:not(:disabled) {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--bg-void);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg), var(--glow-green-intense);
+}
+
+/* Pink/Confession Button */
+.cyberpunk-btn-confession {
+  background: linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 100%);
+  color: var(--text-primary);
+  border: 2px solid var(--neon-pink);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: var(--shadow-md), var(--glow-pink-soft);
+}
+
+.cyberpunk-btn-confession:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--neon-purple) 0%, var(--neon-pink) 100%);
+  border-color: var(--neon-purple);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg), var(--glow-pink);
+}
+
+/* Purple Button */
+.cyberpunk-btn-purple {
+  background: var(--neon-purple);
+  color: var(--text-primary);
+  border: 2px solid var(--neon-purple);
+  font-weight: 700;
+  box-shadow: var(--shadow-md), var(--glow-purple-soft);
+}
+
+.cyberpunk-btn-purple:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--neon-purple) 0%, var(--neon-pink) 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), var(--glow-purple);
+}
+
+/* Cyan Button */
+.cyberpunk-btn-cyan {
+  background: var(--neon-cyan);
+  color: var(--bg-void);
+  border: 2px solid var(--neon-cyan);
+  font-weight: 700;
+  box-shadow: var(--shadow-md), var(--glow-cyan-soft);
+}
+
+.cyberpunk-btn-cyan:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-green) 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), var(--glow-cyan);
+}
+
+/* Secondary/Ghost Button */
+.cyberpunk-btn-secondary,
+.cyberpunk-btn-ghost {
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.cyberpunk-btn-secondary:hover:not(:disabled),
+.cyberpunk-btn-ghost:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--neon-cyan);
+  background: var(--neon-cyan-subtle);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), var(--glow-cyan-soft);
+}
+
+/* Danger Button */
+.cyberpunk-btn-danger {
+  background: var(--surface);
+  color: var(--neon-red);
+  border: 2px solid var(--neon-red);
+  box-shadow: var(--shadow-sm), var(--shadow-red);
+}
+
+.cyberpunk-btn-danger:hover:not(:disabled) {
+  background: var(--neon-red);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md), var(--glow-red);
+}
+
+/* ============================
+   8. ANIMATIONS
    ============================ */
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
   }
 }
 
 @keyframes smoothSlideUp {
-  0% {
-    opacity: 0;
-    transform: translateY(15px) scale(0.98);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  0% { opacity: 0; transform: translateY(20px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes systemPulse {
-  0%, 100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 1;
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
-  }
+@keyframes neonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes borderGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes rainbowShift {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: var(--glow-green-soft); }
+  50% { box-shadow: var(--glow-green-intense); }
 }
 
 @keyframes modalZoom {
-  0% {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes shake {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  10%, 30%, 50%, 70%, 90% {
-    transform: translateX(-5px);
-  }
-  20%, 40%, 60%, 80% {
-    transform: translateX(5px);
-  }
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
-.shake {
-  animation: shake 0.5s ease-in-out;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
+
+@keyframes floatUpDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.shake { animation: shake 0.5s ease-in-out; }
+.neon-pulse { animation: neonPulse 2s ease-in-out infinite; }
 
 /* ============================
-   7. LOADING STATE
+   9. LOADING STATE
    ============================ */
 
 #loading {
-  animation: systemPulse 2s infinite ease-in-out;
-  font-family: 'Courier New', Courier, monospace;
-  letter-spacing: 2px;
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  animation: neonPulse 2s infinite ease-in-out;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 3px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--gradient-rainbow);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% auto;
+  animation: rainbowShift 3s linear infinite, neonPulse 2s ease-in-out infinite;
 }
 
 /* ============================
-   8. FEED CONTAINER
+   10. HEADER - WITH BORDERS & SHADOW
    ============================ */
 
-#feedContainer {
-  background-color: transparent;
-  overflow-y: auto;
-  overflow-x: hidden; /* prevent sideways scroll when a row overflows */
-  scroll-behavior: smooth;
-  padding-bottom: 20px;
-  overflow-anchor: none;
-  contain: layout style;
+.cyberpunk-header {
+  background: var(--bg-dark);
+  border-bottom: 2px solid var(--border-light);
+  position: relative;
+  z-index: var(--z-sticky);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05);
+}
+
+/* Rainbow glowing bottom border */
+.cyberpunk-header::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-header);
+  box-shadow: 0 0 15px var(--neon-green-glow), 0 0 25px var(--neon-cyan-glow), 0 0 35px var(--neon-purple-glow);
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+.cyberpunk-logo {
+  background: var(--gradient-header);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+  letter-spacing: 3px;
+  filter: drop-shadow(0 0 15px var(--neon-cyan-glow));
+  animation: floatUpDown 3s ease-in-out infinite;
+}
+
+/* Header Icon Buttons - WITH BORDER */
+.cyberpunk-icon-btn {
+  background: var(--surface);
+  border: 2px solid var(--border-default);
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  transition: all 0.3s var(--ease-neon);
+  box-shadow: var(--shadow-sm);
+}
+
+.cyberpunk-icon-btn:hover {
+  background: var(--surface-elevated);
+  border-color: var(--neon-purple);
+  color: var(--neon-purple);
+  box-shadow: var(--shadow-md), var(--glow-purple-soft);
+  transform: translateY(-2px) scale(1.1);
+}
+
+#notificationButton.active {
+  color: var(--neon-yellow) !important;
+  border-color: var(--neon-yellow);
+  text-shadow: var(--text-glow-yellow);
+  animation: neonPulse 1.5s ease-in-out infinite;
 }
 
 /* ============================
-   9. MESSAGE BUBBLES (FIXED)
+   11. NAVIGATION TABS - WITH BORDERS
+   ============================ */
+
+nav {
+  background: var(--surface);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  box-shadow: var(--shadow-md), var(--inner-shadow);
+}
+
+.nav-item {
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  transition: all 0.3s var(--ease-neon);
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 1px;
+  user-select: none;
+  position: relative;
+  background: transparent;
+  border: 2px solid transparent;
+  text-transform: uppercase;
+}
+
+.nav-item:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+  border-color: var(--border-light);
+}
+
+/* Chat Tab - Green Theme */
+.nav-item-chat.active {
+  color: var(--neon-green);
+  background: var(--neon-green-subtle);
+  border: 2px solid var(--neon-green);
+  font-weight: 700;
+  box-shadow: var(--glow-green-soft), var(--shadow-green);
+  text-shadow: var(--text-glow-green);
+}
+
+.nav-item-chat.active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 3px;
+  background: var(--neon-green);
+  border-radius: var(--radius-full);
+  box-shadow: var(--glow-green);
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+/* Confession Tab - Pink/Purple Theme */
+.nav-item-confession.active {
+  color: var(--neon-pink);
+  background: var(--neon-pink-subtle);
+  border: 2px solid var(--neon-pink);
+  font-weight: 700;
+  box-shadow: var(--glow-pink-soft), var(--shadow-pink);
+  text-shadow: var(--text-glow-pink);
+}
+
+.nav-item-confession.active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--neon-pink) 0%, var(--neon-purple) 100%);
+  border-radius: var(--radius-full);
+  box-shadow: var(--glow-pink);
+}
+
+/* ============================
+   12. MAIN CONTENT AREA
+   ============================ */
+
+.cyberpunk-main {
+  position: relative;
+  z-index: 1;
+  border-left: 1px solid var(--border-dark);
+  border-right: 1px solid var(--border-dark);
+}
+
+.cyberpunk-feed {
+  background: transparent;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  padding-bottom: 20px;
+}
+
+/* Gradient fade at top */
+.cyberpunk-feed::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: linear-gradient(180deg, var(--bg-void) 0%, transparent 100%);
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* ============================
+   13. MESSAGE BUBBLES - WITH BORDERS
    ============================ */
 
 .message-bubble {
-  background-color: var(--surface);
-  border: 1px solid var(--border-color);
+  background: var(--surface);
+  border: 2px solid var(--border-default);
   word-wrap: break-word;
   white-space: pre-wrap;
-  overflow-wrap: anywhere; /* stronger than break-word for long unbroken strings */
+  overflow-wrap: anywhere;
   word-break: break-word;
-  hyphens: auto;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1.125rem;
   position: relative;
-  transition: background-color 0.2s, transform 0.2s, border-color 0.2s;
+  transition: all 0.3s var(--ease-neon);
   margin-bottom: 2px;
   display: flex;
   flex-direction: column;
   min-width: 140px;
   max-width: 100%;
   z-index: var(--z-base);
-  cursor: default;
-  color: var(--text-main);
+  color: var(--text-primary);
   border-radius: var(--radius-lg);
   animation: smoothSlideUp 0.4s var(--ease-out-expo) forwards;
-  will-change: transform, opacity;
-  /* FIXED: Removed contain: content - was clipping kebab button */
-  /* FIXED: Ensure overflow is visible */
   overflow: visible;
+  box-shadow: var(--shadow-sm), var(--inner-shadow);
 }
 
 .message-bubble:hover {
-  border-color: #444;
-  background-color: #232323;
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateX(3px);
 }
 
+/* Own Messages - Green Accent */
+.my-message {
+  background: linear-gradient(135deg, var(--neon-green-subtle) 0%, var(--surface) 100%);
+  border: 2px solid var(--neon-green-dim);
+  border-right: 4px solid var(--neon-green);
+  align-self: flex-end;
+  box-shadow: var(--shadow-sm), var(--shadow-green);
+}
+
+.my-message:hover {
+  background: linear-gradient(135deg, var(--neon-green-medium) 0%, var(--surface-hover) 100%);
+  border-color: var(--neon-green);
+  box-shadow: var(--shadow-md), var(--glow-green-soft);
+  transform: translateX(-3px);
+}
+
+/* Selection Mode */
 body.selection-mode .message-bubble {
   cursor: pointer;
   border-style: dashed;
-}
-
-.message-bubble.has-reactions {
-  margin-bottom: 24px !important;
-}
-
-.my-message {
-  background-color: #262626;
-  border: 1px solid var(--border-color);
-  align-self: flex-end;
+  border-color: var(--neon-purple);
 }
 
 .selected-message {
-  background-color: #333 !important;
-  border-color: var(--text-main) !important;
-  transform: scale(1.01);
+  background: var(--neon-purple-medium) !important;
+  border: 2px solid var(--neon-purple) !important;
+  border-style: solid !important;
+  transform: scale(1.02);
+  box-shadow: var(--glow-purple), var(--shadow-md);
 }
 
+/* Pinned Messages */
 .message-bubble.pinned {
-  border-left: 4px solid var(--warning) !important;
+  border-left: 4px solid var(--neon-yellow) !important;
+  background: linear-gradient(135deg, var(--neon-yellow-subtle) 0%, var(--surface) 100%);
+  box-shadow: var(--shadow-sm), var(--shadow-md);
+}
+
+.message-bubble.has-reactions {
+  margin-bottom: 28px !important;
 }
 
 /* ============================
-   10. MESSAGE FOOTER
+   14. MESSAGE FOOTER
    ============================ */
 
 .bubble-footer {
   display: flex;
   align-items: center;
-  margin-top: 6px;
+  margin-top: 8px;
   width: 100%;
   height: 14px;
 }
 
 .inner-timestamp {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
-  opacity: 0.5;
+  opacity: 0.8;
   font-weight: 500;
-  white-space: nowrap;
-  transition: opacity 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .message-bubble:hover .inner-timestamp {
   opacity: 1;
-  color: var(--text-main);
+  color: var(--text-secondary);
+}
+
+.my-message .inner-timestamp {
+  color: var(--neon-green-dim);
+}
+
+.my-message:hover .inner-timestamp {
+  color: var(--neon-green);
 }
 
 .edited-marker {
-  font-size: 0.5rem;
-  opacity: 0.5;
+  font-size: 0.55rem;
+  opacity: 0.7;
   margin-right: 4px;
   font-style: italic;
+  color: var(--neon-cyan);
 }
 
 /* ============================
-   11. BUBBLE WRAPPER
+   15. BUBBLE WRAPPER
    ============================ */
 
 .bubble-wrapper {
@@ -450,7 +863,7 @@ body.selection-mode .message-bubble {
   flex-direction: column;
   align-items: flex-start;
   max-width: 100%;
-  min-width: 0; /* allow bubble to shrink instead of forcing horizontal overflow */
+  min-width: 0;
 }
 
 .bubble-wrapper.my-bubble-wrapper {
@@ -458,19 +871,19 @@ body.selection-mode .message-bubble {
 }
 
 /* ============================
-   12. KEBAB MENU BUTTON (TOP CORNER OUTSIDE)
+   16. KEBAB MENU BUTTON - WITH BORDER
    ============================ */
 
 .kebab-btn {
   position: absolute;
   top: 0;
-  right: -32px;
-  width: 26px;
-  height: 26px;
+  right: -34px;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--surface);
-  border: 1px solid var(--border-color);
+  border: 2px solid var(--border-light);
   color: var(--text-muted);
   opacity: 0;
   visibility: hidden;
@@ -478,137 +891,85 @@ body.selection-mode .message-bubble {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s var(--ease-out-expo);
+  transition: all 0.3s var(--ease-neon);
   z-index: calc(var(--z-base) + 50);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-sm);
   transform: scale(0.8);
 }
 
-/* For my messages - position at top-left corner outside */
 .bubble-wrapper.my-bubble-wrapper .kebab-btn {
   right: auto;
-  left: -32px;
+  left: -34px;
 }
 
-/* Show on message-wrapper hover - same as reaction/reply */
 .message-wrapper:hover .kebab-btn {
-  opacity: 0.4;
+  opacity: 0.8;
   visibility: visible;
   transform: scale(1);
 }
 
 .kebab-btn:hover {
   opacity: 1 !important;
-  visibility: visible !important;
-  background-color: var(--text-main);
-  color: var(--bg-color);
-  border-color: var(--text-main);
+  background: var(--neon-cyan);
+  color: var(--bg-void);
+  border-color: var(--neon-cyan);
   transform: scale(1.15) !important;
-}
-
-.kebab-btn:focus {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Touch devices - always show */
-@media (hover: none) and (pointer: coarse) {
-  .kebab-btn {
-    opacity: 0.5;
-    visibility: visible;
-    transform: scale(1);
-  }
-  
-  .message-wrapper:active .kebab-btn {
-    opacity: 1;
-  }
-}
-
-/* Small screens - adjust position */
-@media (max-width: 640px) {
-  .kebab-btn {
-    width: 24px;
-    height: 24px;
-    right: -28px;
-  }
-  
-  .bubble-wrapper.my-bubble-wrapper .kebab-btn {
-    right: auto;
-    left: -28px;
-  }
-
-  /* On mobile, account for always-visible side action buttons to avoid horizontal scrolling */
-  .message-bubble {
-    max-width: calc(100vw - 140px);
-  }
-}
-
-/* Extra small screens - tighter position */
-@media (max-width: 400px) {
-  .kebab-btn {
-    right: -22px;
-    width: 22px;
-    height: 22px;
-  }
-  
-  .bubble-wrapper.my-bubble-wrapper .kebab-btn {
-    right: auto;
-    left: -22px;
-  }
+  box-shadow: var(--shadow-md), var(--glow-cyan);
 }
 
 /* ============================
-   13. PROFILE PHOTOS
+   17. PROFILE PHOTOS - WITH BORDER
    ============================ */
 
 .chat-pfp {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--border-light);
   object-fit: cover;
   flex-shrink: 0;
   transition: all 0.3s ease;
-  filter: grayscale(100%);
   background-color: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .message-bubble:hover .chat-pfp {
-  filter: grayscale(0%);
-  border-color: var(--text-main);
-  transform: scale(1.05);
+  border-color: var(--neon-purple);
+  box-shadow: var(--shadow-md), var(--glow-purple-soft);
+  transform: scale(1.08);
 }
 
-.chat-pfp[src=""],
-.chat-pfp:not([src]) {
-  background: linear-gradient(135deg, var(--surface) 0%, var(--highlight) 100%);
+.my-message .chat-pfp {
+  border-color: var(--neon-green-dim);
+}
+
+.my-message:hover .chat-pfp {
+  border-color: var(--neon-green);
+  box-shadow: var(--shadow-md), var(--glow-green-soft);
 }
 
 /* ============================
-   14. ADMIN BADGE
+   18. ADMIN BADGE - WITH BORDER
    ============================ */
 
 .admin-badge {
-  background-color: var(--text-main);
-  color: var(--bg-color);
+  background: var(--gradient-rainbow);
+  background-size: 200% auto;
+  color: var(--bg-void);
   font-size: 0.55rem;
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-weight: 700;
   letter-spacing: 0.5px;
   margin: 0 6px;
-  align-self: center;
   text-transform: uppercase;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-  user-select: none;
-  pointer-events: none;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: var(--glow-rainbow), var(--shadow-sm);
+  animation: rainbowShift 3s linear infinite;
 }
 
 /* ============================
-   15. MESSAGE WRAPPER & ACTIONS
+   19. ACTION BUTTONS - WITH BORDER
    ============================ */
 
 .message-wrapper {
@@ -620,53 +981,45 @@ body.selection-mode .message-bubble {
 }
 
 .side-action-btn {
-  background: none;
-  border: none;
+  background: var(--surface);
+  border: 2px solid var(--border-default);
   color: var(--text-muted);
   opacity: 0;
   cursor: pointer;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1rem;
-  transition: all 0.3s var(--ease-out-expo);
+  transition: all 0.3s var(--ease-neon);
   margin-bottom: 4px;
-  flex-shrink: 0;
-  position: relative;
-  z-index: calc(var(--z-base) + 20);
   transform: scale(0.8);
+  box-shadow: var(--shadow-sm);
 }
 
 .message-wrapper:hover .side-action-btn {
-  opacity: 0.4;
+  opacity: 0.7;
   transform: scale(1);
 }
 
 .side-action-btn:hover {
   opacity: 1 !important;
-  color: var(--text-main);
-  background-color: var(--surface);
-  transform: scale(1.15) !important;
-}
-
-/* Touch devices - always show action buttons */
-@media (hover: none) and (pointer: coarse) {
-  .side-action-btn {
-    opacity: 0.5;
-    transform: scale(1);
-  }
+  color: var(--neon-pink);
+  background: var(--neon-pink-subtle);
+  border-color: var(--neon-pink);
+  transform: scale(1.2) !important;
+  box-shadow: var(--shadow-md), var(--glow-pink-soft);
 }
 
 /* ============================
-   16. REACTIONS
+   20. REACTIONS - WITH BORDERS
    ============================ */
 
 .reaction-chips-container {
   position: absolute;
-  bottom: -12px;
+  bottom: -18px;
   left: 8px;
   display: flex;
   gap: 4px;
@@ -679,66 +1032,60 @@ body.selection-mode .message-bubble {
 }
 
 .reaction-chip {
-  background-color: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 2px 8px;
-  font-size: 0.7rem;
+  background: var(--surface);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: 0.72rem;
   display: flex;
   align-items: center;
-  gap: 3px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  gap: 4px;
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
-  color: var(--text-muted);
-  transition: all 0.2s ease;
-  animation: modalZoom 0.2s var(--ease-out-expo);
+  color: var(--text-secondary);
+  transition: all 0.25s var(--ease-neon);
 }
 
 .reaction-chip:hover {
-  border-color: var(--text-main);
-  color: var(--text-main);
-  transform: translateY(-2px);
+  border-color: var(--neon-pink);
+  color: var(--neon-pink);
+  transform: translateY(-3px) scale(1.08);
+  box-shadow: var(--shadow-md), var(--glow-pink-soft);
 }
 
 .reaction-chip.user-reacted {
-  background-color: var(--border-color);
-  border-color: var(--text-muted);
-  color: var(--text-main);
+  background: var(--neon-pink-subtle);
+  border-color: var(--neon-pink);
+  color: var(--neon-pink);
+  box-shadow: var(--glow-pink-soft);
 }
 
 .reaction-picker {
   position: fixed;
-  background-color: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 8px;
+  background: var(--surface);
+  border: 3px solid var(--neon-purple);
+  border-radius: var(--radius-xl);
+  padding: 12px 16px;
   display: flex;
-  gap: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
-  animation: modalZoom 0.2s var(--ease-out-expo);
+  gap: 14px;
+  box-shadow: var(--shadow-lg), var(--glow-purple);
   z-index: var(--z-tooltip);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
 }
 
 .reaction-option {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   cursor: pointer;
-  transition: transform 0.2s ease;
-  user-select: none;
-  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-}
-
-.reaction-option:active {
-  transform: scale(0.9);
+  transition: transform 0.2s var(--ease-spring);
 }
 
 .reaction-option:hover {
-  transform: scale(1.2) translateY(-2px);
+  transform: scale(1.4) translateY(-5px);
+  filter: drop-shadow(0 0 10px var(--neon-yellow-glow));
 }
 
 /* ============================
-   17. SCROLL TO BOTTOM BUTTON
+   21. SCROLL TO BOTTOM BUTTON - WITH BORDER
    ============================ */
 
 #scrollToBottomBtn {
@@ -746,127 +1093,86 @@ body.selection-mode .message-bubble {
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: var(--surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-green) 100%);
+  border: 3px solid var(--neon-cyan);
+  color: var(--bg-void);
+  width: 50px;
+  height: 50px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg), var(--glow-cyan);
   z-index: var(--z-sticky);
-  transition: all 0.3s ease;
-  animation: modalZoom 0.3s var(--ease-out-expo);
-}
-
-#scrollToBottomBtn svg {
-  width: 20px;
-  height: 20px;
-  flex: none;
+  transition: all 0.3s var(--ease-neon);
+  animation: floatUpDown 2s ease-in-out infinite;
 }
 
 #scrollToBottomBtn:hover {
-  background-color: var(--text-main);
-  color: var(--bg-color);
-  transform: translateX(-50%) translateY(-5px);
+  background: linear-gradient(135deg, var(--neon-green) 0%, var(--neon-cyan) 100%);
+  border-color: var(--neon-green);
+  transform: translateX(-50%) translateY(-5px) scale(1.15);
+  box-shadow: var(--shadow-xl), var(--glow-green-intense);
 }
 
 #scrollToBottomBtn.hidden {
   display: none;
 }
 
-/*
-  New message counter: use a pill with min-width instead of a fixed 20x20 circle.
-  This prevents multi-digit counts (10, 99+) from getting clipped/squashed.
-*/
 #newMsgCount {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  background-color: var(--text-main);
-  color: var(--bg-color);
+  top: -10px;
+  right: -10px;
+  background: linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-orange) 100%);
+  color: var(--text-primary);
   font-size: 0.65rem;
-  font-weight: 800;
-  height: 20px;
-  min-width: 20px;
+  font-weight: 700;
+  height: 24px;
+  min-width: 24px;
   padding: 0 6px;
-  border-radius: 9999px;
-  line-height: 1;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  animation: systemPulse 1s infinite;
-  box-sizing: border-box;
+  border: 3px solid var(--bg-void);
+  box-shadow: var(--shadow-sm), var(--glow-pink-soft);
+  animation: neonPulse 1s infinite;
 }
 
 #newMsgCount.hidden {
   display: none;
 }
 
-@media (max-width: 640px) {
-  #newMsgCount {
-    top: -6px;
-    right: -6px;
-    height: 18px;
-    min-width: 18px;
-    padding: 0 5px;
-    font-size: 0.6rem;
-  }
-}
-
 /* ============================
-   18. NAVIGATION
-   ============================ */
-
-.nav-item {
-  cursor: pointer;
-  padding: 8px 16px;
-  border-bottom: 2px solid transparent;
-  transition: all 0.3s ease;
-  color: var(--text-muted);
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  user-select: none;
-  overflow: visible;
-}
-
-.nav-item.active,
-.nav-item:hover {
-  color: var(--text-main);
-  border-bottom-color: var(--text-main);
-}
-
-/* ============================
-   19. TYPING INDICATOR
+   22. TYPING INDICATOR
    ============================ */
 
 #typingIndicator {
   height: 1.5rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
+  font-size: 0.78rem;
+  color: var(--neon-purple);
   font-style: italic;
-  animation: systemPulse 1.5s infinite ease-in-out;
   padding-left: var(--spacing-md);
+  text-shadow: var(--text-glow-purple);
+  border-top: 1px solid var(--border-dark);
 }
 
 /* ============================
-   20. REPLY BAR
+   23. REPLY BAR - WITH BORDERS
    ============================ */
 
+.cyberpunk-reply-bar,
 #replyBar {
-  background-color: var(--surface);
-  border-top: 1px solid var(--border-color);
-  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border-top: 2px solid var(--border-light);
+  border-left: 4px solid var(--neon-cyan);
+  padding: 0.875rem 1rem;
   display: none;
   justify-content: space-between;
   align-items: center;
-  animation: smoothSlideUp 0.2s var(--ease-out-expo);
+  animation: smoothSlideUp 0.25s var(--ease-out-expo);
+  box-shadow: var(--shadow-md), inset 0 0 20px var(--neon-cyan-subtle);
 }
 
 #replyBar.show {
@@ -875,94 +1181,145 @@ body.selection-mode .message-bubble {
 
 #replyBar .reply-info {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   overflow: hidden;
 }
 
 #replyBar .reply-author {
-  font-weight: bold;
-  color: var(--text-main);
+  font-weight: 600;
+  color: var(--neon-cyan);
+  text-shadow: var(--text-glow-cyan);
 }
 
 #replyBar .reply-text {
-  opacity: 0.7;
-  color: var(--text-muted);
+  opacity: 0.8;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 300px;
 }
 
-#replyBar button {
-  background: none;
-  border: none;
+.cyberpunk-cancel-btn,
+#replyBar button,
+#cancelReply {
+  background: var(--surface);
+  border: 2px solid var(--border-light);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  transition: color 0.2s ease;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.25s ease;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  box-shadow: var(--shadow-sm);
 }
 
-#replyBar button:hover {
-  color: var(--text-main);
+#replyBar button:hover,
+.cyberpunk-cancel-btn:hover,
+#cancelReply:hover {
+  color: var(--neon-red);
+  background: var(--neon-red-subtle);
+  border-color: var(--neon-red);
+  box-shadow: var(--shadow-md), var(--glow-red-soft);
 }
 
 .reply-preview {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-left: 2px solid var(--text-muted);
-  padding: var(--spacing-sm);
+  background: var(--neon-cyan-subtle);
+  border: 2px solid var(--neon-cyan-dim);
+  border-left: 4px solid var(--neon-cyan);
+  padding: var(--spacing-sm) var(--spacing-md);
   margin-bottom: var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  max-height: 60px;
-  overflow: hidden;
+  transition: all 0.25s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .reply-preview:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background: var(--neon-cyan-medium);
+  border-color: var(--neon-cyan);
+  box-shadow: var(--shadow-md), var(--glow-cyan-soft);
 }
 
 .reply-preview .reply-author {
-  font-weight: bold;
-  margin-bottom: 0.25rem;
-  color: var(--text-main);
+  font-weight: 600;
+  color: var(--neon-cyan);
 }
 
 .reply-preview .reply-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* ============================
-   21. CONTEXT MENU
+   24. SELECTION BAR - WITH BORDERS
    ============================ */
 
+.cyberpunk-selection-bar,
+#selectionBar {
+  background: var(--surface);
+  border-top: 3px solid var(--neon-purple);
+  border-bottom: 1px solid var(--border-default);
+  padding: 0.875rem 1rem;
+  box-shadow: var(--shadow-md), inset 0 0 20px var(--neon-purple-subtle);
+  animation: smoothSlideUp 0.25s var(--ease-out-expo);
+}
+
+#selectionCancel {
+  background: var(--surface);
+  border: 2px solid var(--border-light);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+#selectionCancel:hover {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  box-shadow: var(--shadow-md), var(--glow-cyan-soft);
+}
+
+#selectionDelete {
+  background: var(--neon-red-subtle);
+  border: 2px solid var(--neon-red);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--neon-red);
+  box-shadow: var(--shadow-sm), var(--shadow-red);
+}
+
+#selectionDelete:hover {
+  background: var(--neon-red);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md), var(--glow-red);
+}
+
+/* ============================
+   25. CONTEXT MENU - WITH BORDERS
+   ============================ */
+
+.cyberpunk-context-menu,
 #contextMenu {
   position: fixed;
   z-index: var(--z-tooltip);
-  background-color: var(--surface);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8);
-  border-radius: var(--radius-md);
-  padding: 4px;
-  min-width: 160px;
+  background: var(--surface);
+  border: 3px solid var(--neon-purple);
+  box-shadow: var(--shadow-xl), var(--glow-purple);
+  border-radius: var(--radius-lg);
+  padding: 8px;
+  min-width: 220px;
   opacity: 0;
   visibility: hidden;
-  transform: scale(0.95);
-  transform-origin: top left;
-  transition: 
-    opacity 0.15s ease-out, 
-    visibility 0s linear 0.15s, 
-    transform 0.15s ease-out;
+  transform: scale(0.95) translateY(-5px);
+  transition: opacity 0.2s ease-out, visibility 0s linear 0.2s, transform 0.2s var(--ease-out-expo);
+  backdrop-filter: blur(12px);
 }
 
 #contextMenu.is-open {
   opacity: 1;
   visibility: visible;
-  transform: scale(1);
+  transform: scale(1) translateY(0);
   transition-delay: 0s;
 }
 
@@ -973,69 +1330,65 @@ body.selection-mode .message-bubble {
 }
 
 #contextMenu li {
-  padding: 0.6rem 0.85rem;
+  padding: 0.75rem 1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--text-main);
+  transition: all 0.2s var(--ease-neon);
+  color: var(--text-primary);
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  user-select: none;
+  font-size: 0.88rem;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  border: 2px solid transparent;
+  margin: 2px 0;
 }
 
-#contextMenu li:hover {
-  background-color: var(--highlight);
-  padding-left: 1rem;
+.menu-icon {
+  font-size: 1rem;
+}
+
+.menu-item-edit:hover {
+  background: var(--neon-cyan-subtle);
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  padding-left: 1.25rem;
+  box-shadow: var(--glow-cyan-soft);
+}
+
+.menu-item-delete:hover {
+  background: var(--neon-red-subtle);
+  color: var(--neon-red);
+  border-color: var(--neon-red);
+  padding-left: 1.25rem;
+  box-shadow: var(--glow-red-soft);
+}
+
+.menu-item-select:hover {
+  background: var(--neon-purple-subtle);
+  color: var(--neon-purple);
+  border-color: var(--neon-purple);
+  padding-left: 1.25rem;
+  box-shadow: var(--glow-purple-soft);
 }
 
 #contextMenu li.separator {
-  height: 1px;
-  background-color: var(--border-color);
-  margin: 4px 0;
+  height: 2px;
+  background: var(--border-light);
+  margin: 8px 0;
   padding: 0;
   cursor: default;
-}
-
-#contextMenu li.separator:hover {
-  background-color: var(--border-color);
-  padding-left: 0;
+  border: none;
 }
 
 /* ============================
-   22. SELECTION BAR
-   ============================ */
-
-#selectionBar {
-  background-color: var(--surface);
-  border-top: 1px solid var(--border-color);
-  padding: 0.5rem 1rem;
-  animation: smoothSlideUp 0.2s var(--ease-out-expo);
-}
-
-#selectionCount {
-  color: var(--text-main);
-}
-
-#selectionCancel {
-  color: var(--text-muted);
-}
-
-#selectionDelete {
-  color: var(--danger);
-}
-
-/* ============================
-   23. MODALS
+   26. MODALS - WITH BORDERS
    ============================ */
 
 .modal-base {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(5, 5, 8, 0.95);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1044,7 +1397,6 @@ body.selection-mode .message-bubble {
   visibility: hidden;
   transition: opacity 0.3s ease;
   z-index: var(--z-modal);
-  isolation: isolate;
 }
 
 .modal-base.is-open {
@@ -1053,14 +1405,12 @@ body.selection-mode .message-bubble {
 }
 
 .modal-content {
-  transform: scale(0.95) translateY(10px);
+  transform: scale(0.95) translateY(20px);
   opacity: 0;
   transition: all 0.3s var(--ease-out-expo);
-  /* NOTE: Do not force a responsive max-width here.
-     Individual modals set their own sizing via Tailwind classes (e.g. max-w-sm).
-     A global max-width was overriding those and causing the dialog to grow/shrink with the window. */
   max-height: 90vh;
   overflow: auto;
+  position: relative;
 }
 
 .modal-base.is-open .modal-content {
@@ -1068,92 +1418,407 @@ body.selection-mode .message-bubble {
   opacity: 1;
 }
 
+.cyberpunk-modal {
+  background: var(--surface);
+  border: 3px solid var(--border-light);
+  box-shadow: var(--shadow-xl);
+}
+
+.modal-icon {
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+
+/* Purple Modal (Profile) */
+.cyberpunk-modal-purple {
+  border-color: var(--neon-purple);
+  box-shadow: var(--shadow-xl), var(--glow-purple);
+}
+
+.cyberpunk-modal-purple::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 30px;
+  height: 30px;
+  border-top: 4px solid var(--neon-purple);
+  border-left: 4px solid var(--neon-purple);
+  pointer-events: none;
+}
+
+.cyberpunk-modal-purple::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 30px;
+  height: 30px;
+  border-bottom: 4px solid var(--neon-pink);
+  border-right: 4px solid var(--neon-pink);
+  pointer-events: none;
+}
+
+.cyberpunk-modal-title-purple {
+  color: var(--neon-purple);
+  text-shadow: var(--text-glow-purple);
+}
+
+.cyberpunk-input-purple {
+  border: 2px solid var(--border-light);
+}
+
+.cyberpunk-input-purple:focus {
+  border-color: var(--neon-purple);
+  box-shadow: var(--glow-purple-soft), inset 0 0 15px var(--neon-purple-subtle);
+}
+
+/* Cyan Modal (Edit) */
+.cyberpunk-modal-cyan {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--shadow-xl), var(--glow-cyan);
+}
+
+.cyberpunk-modal-cyan::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 30px;
+  height: 30px;
+  border-top: 4px solid var(--neon-cyan);
+  border-left: 4px solid var(--neon-cyan);
+  pointer-events: none;
+}
+
+.cyberpunk-modal-cyan::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 30px;
+  height: 30px;
+  border-bottom: 4px solid var(--neon-green);
+  border-right: 4px solid var(--neon-green);
+  pointer-events: none;
+}
+
+.cyberpunk-modal-title-cyan {
+  color: var(--neon-cyan);
+  text-shadow: var(--text-glow-cyan);
+}
+
+.cyberpunk-input-cyan {
+  border: 2px solid var(--border-light);
+}
+
+.cyberpunk-input-cyan:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--glow-cyan-soft), inset 0 0 15px var(--neon-cyan-subtle);
+}
+
+/* Danger Modal (Confirm) */
+.cyberpunk-modal-danger {
+  border-color: var(--neon-red);
+  box-shadow: var(--shadow-xl), var(--glow-red);
+}
+
+.cyberpunk-modal-danger::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 30px;
+  height: 30px;
+  border-top: 4px solid var(--neon-red);
+  border-left: 4px solid var(--neon-red);
+  pointer-events: none;
+}
+
+.cyberpunk-modal-danger::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 30px;
+  height: 30px;
+  border-bottom: 4px solid var(--neon-orange);
+  border-right: 4px solid var(--neon-orange);
+  pointer-events: none;
+}
+
+.cyberpunk-modal-title-danger {
+  color: var(--neon-red);
+  text-shadow: var(--text-glow-red);
+}
+
+/* Modal Inputs */
+.cyberpunk-modal-input {
+  background: var(--bg-dark);
+  border: 2px solid var(--border-light);
+  color: var(--text-primary);
+  box-shadow: var(--inner-shadow);
+}
+
+.cyberpunk-modal-input:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--glow-cyan-soft);
+}
+
 /* ============================
-   24. DATE SEPARATOR
+   27. DATE SEPARATOR - WITH BORDER
    ============================ */
 
 .date-separator {
   display: flex;
   justify-content: center;
-  margin: 24px 0 12px 0;
+  margin: 28px 0 16px 0;
   width: 100%;
-  opacity: 0.9;
   user-select: none;
 }
 
 .date-separator span {
-  background-color: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.7rem;
+  background: var(--surface);
+  color: var(--neon-cyan);
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 4px 12px;
+  padding: 6px 18px;
   border-radius: var(--radius-full);
-  border: 1px solid var(--border-color);
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-sm), var(--shadow-cyan);
+  text-shadow: var(--text-glow-cyan);
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 /* ============================
-   25. PINNED MESSAGE BAR
+   28. PINNED MESSAGE BAR - WITH BORDER
    ============================ */
 
-#pinnedMessageBar {
-  overflow: hidden;
+.cyberpunk-pinned-bar {
+  background: linear-gradient(135deg, var(--neon-yellow-subtle) 0%, var(--surface) 100%);
+  border-bottom: 3px solid var(--neon-yellow);
+  border-left: 5px solid var(--neon-yellow);
+  box-shadow: var(--shadow-md), inset 0 0 20px var(--neon-yellow-subtle);
 }
 
-#pinnedMessageText {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.cyberpunk-pinned-bar:hover {
+  background: linear-gradient(135deg, rgba(255, 204, 0, 0.2) 0%, var(--surface-hover) 100%);
+  box-shadow: var(--shadow-lg), var(--glow-yellow);
 }
 
 /* ============================
-   26. INPUT FORMS
+   29. INPUT FORMS - WITH BORDERS
    ============================ */
 
-#chatForm,
-#confessionForm {
-  padding: 12px;
-  /* Prevent the bottom input bar from colliding with iOS home indicator / safe area in PWA */
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  background-color: rgba(10, 10, 10, 0.95);
-  border-top: 1px solid var(--border-color);
+.cyberpunk-form {
+  padding: 14px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  background: var(--bg-dark);
+  border-top: 2px solid var(--border-light);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 }
 
-#chatInput,
-#confessionInput {
-  height: 45px !important;
-  min-height: 45px;
+/* Chat Form - Green Theme */
+.cyberpunk-form-chat {
+  border-top: 2px solid var(--neon-green-dim);
+  background: linear-gradient(180deg, var(--neon-green-subtle) 0%, var(--bg-dark) 30%, var(--bg-dark) 100%);
+  box-shadow: 0 -4px 20px rgba(0, 255, 159, 0.1);
+}
+
+/* Confession Form - Pink Theme */
+.cyberpunk-form-confession {
+  border-top: 2px solid var(--neon-pink-dim);
+  background: linear-gradient(180deg, var(--neon-pink-subtle) 0%, var(--bg-dark) 30%, var(--bg-dark) 100%);
+  box-shadow: 0 -4px 20px rgba(255, 0, 128, 0.1);
+}
+
+.cyberpunk-input {
+  height: 48px !important;
+  min-height: 48px;
   max-height: 120px;
-  padding: 10px 16px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background-color: var(--surface);
+  padding: 12px 18px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 2px solid var(--border-default);
+  color: var(--text-primary);
   resize: none;
-  overflow-wrap: break-word;
-  word-break: break-word;
+  box-shadow: var(--inner-shadow);
+}
+
+.cyberpunk-input:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--glow-cyan-soft), inset 0 0 20px var(--neon-cyan-subtle);
+}
+
+/* Chat Input - Green Focus */
+.cyberpunk-input-chat:focus {
+  border-color: var(--neon-green);
+  box-shadow: var(--glow-green-soft), inset 0 0 20px var(--neon-green-subtle);
+}
+
+/* Confession Input - Pink Focus */
+.cyberpunk-input-confession:focus {
+  border-color: var(--neon-pink);
+  box-shadow: var(--glow-pink-soft), inset 0 0 20px var(--neon-pink-subtle);
 }
 
 /* ============================
-   27. UTILITY CLASSES
+   30. CHARACTER COUNTER
    ============================ */
 
-.glow {
-  text-shadow: none;
+.char-counter {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  pointer-events: none;
+  user-select: none;
+  transition: all 0.25s ease;
+  opacity: 0;
+  background: var(--surface);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
 }
 
-.neon-border {
-  border: 1px solid var(--border-color);
-  box-shadow: none;
-  border-radius: var(--radius-sm);
+#chatForm:focus-within .char-counter,
+#confessionForm:focus-within .char-counter,
+.char-counter.visible {
+  opacity: 1;
 }
+
+.char-counter.warning {
+  color: var(--neon-yellow);
+  border-color: var(--neon-yellow);
+  text-shadow: var(--text-glow-yellow);
+}
+
+.char-counter.danger {
+  color: var(--neon-orange);
+  border-color: var(--neon-orange);
+  font-weight: 600;
+}
+
+.char-counter.limit {
+  color: var(--neon-red);
+  border-color: var(--neon-red);
+  font-weight: 700;
+  animation: neonPulse 0.5s ease-in-out infinite;
+  box-shadow: var(--glow-red-soft);
+}
+
+/* ============================
+   31. BAN CHECK OVERLAY
+   ============================ */
+
+.ban-check-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-void);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--neon-purple);
+}
+
+.ban-check-overlay.hidden {
+  display: none;
+}
+
+.ban-check-text {
+  color: var(--neon-cyan);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: var(--text-glow-cyan);
+  animation: neonPulse 2s ease-in-out infinite;
+  padding: 20px 40px;
+  border: 2px solid var(--neon-cyan);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--glow-cyan), var(--shadow-lg);
+}
+
+/* ============================
+   32. BANNED USER OVERLAY
+   ============================ */
+
+.banned-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-void);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  color: var(--neon-red);
+  font-weight: bold;
+  gap: var(--spacing-md);
+  border: 4px solid var(--neon-red);
+}
+
+.banned-overlay h1 {
+  text-shadow: var(--text-glow-red);
+  animation: neonPulse 1s ease-in-out infinite;
+  padding: 20px 40px;
+  border: 2px solid var(--neon-red);
+  border-radius: var(--radius-lg);
+  background: var(--neon-red-subtle);
+}
+
+/* ============================
+   33. NAV BADGE - WITH BORDER
+   ============================ */
+
+.nav-item {
+  position: relative;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  background: linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-orange) 100%);
+  color: var(--text-primary);
+  font-size: 0.6rem;
+  font-weight: 700;
+  height: 20px;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-dark);
+  box-shadow: var(--shadow-sm), var(--glow-pink-soft);
+  z-index: 10;
+  animation: neonPulse 1s infinite;
+}
+
+.nav-badge.pulse {
+  animation: neonPulse 0.5s infinite;
+}
+
+/* ============================
+   34. UTILITY CLASSES
+   ============================ */
 
 .error {
-  border-color: var(--danger) !important;
+  border-color: var(--neon-red) !important;
   animation: shake 0.5s ease-in-out;
+  box-shadow: var(--glow-red);
 }
 
 .success {
-  border-color: var(--success) !important;
+  border-color: var(--neon-green) !important;
+  box-shadow: var(--glow-green-soft);
 }
 
 .loading {
@@ -1165,49 +1830,52 @@ body.selection-mode .message-bubble {
 .loading::after {
   content: "";
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   top: 50%;
   left: 50%;
-  margin-left: -8px;
-  margin-top: -8px;
-  border: 2px solid transparent;
-  border-top-color: currentColor;
+  margin-left: -10px;
+  margin-top: -10px;
+  border: 3px solid transparent;
+  border-top-color: var(--neon-cyan);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  box-shadow: var(--glow-cyan-soft);
 }
 
 /* ============================
-   28. BANNED USER OVERLAY
+   35. SPAM WARNING TOAST
    ============================ */
 
-.banned-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: var(--bg-color);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 99999;
-  color: var(--danger);
-  font-weight: bold;
-  gap: var(--spacing-md);
-  pointer-events: all;
-  user-select: none;
+#spam-warning-toast {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, var(--neon-red) 0%, var(--neon-orange) 100%) !important;
+  border: 3px solid var(--neon-red) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg), var(--glow-red) !important;
+  color: var(--text-primary) !important;
 }
 
 /* ============================
-   29. PRINT STYLES
+   36. TEXT SELECTION
+   ============================ */
+
+::selection {
+  background: var(--neon-pink);
+  color: var(--bg-void);
+}
+
+::-moz-selection {
+  background: var(--neon-pink);
+  color: var(--bg-void);
+}
+
+/* ============================
+   37. PRINT STYLES
    ============================ */
 
 @media print {
+  body::before,
   #contextMenu,
   #selectionBar,
   #replyBar,
@@ -1232,33 +1900,35 @@ body.selection-mode .message-bubble {
     background-color: #f5f5f5;
     border-color: #ddd;
     color: black;
-    break-inside: avoid;
+    box-shadow: none;
   }
 }
 
 /* ============================
-   30. HIGH CONTRAST MODE
+   38. HIGH CONTRAST MODE
    ============================ */
 
 @media (prefers-contrast: high) {
   :root {
-    --border-color: #666666;
-    --text-muted: #aaaaaa;
+    --border-default: #555555;
+    --border-light: #666666;
+    --text-secondary: #cccccc;
   }
 
-  .message-bubble {
-    border-width: 2px;
-  }
-
+  .message-bubble,
   button,
   input,
-  textarea {
-    border-width: 2px;
+  textarea,
+  .nav-item,
+  .reaction-chip,
+  .modal-content,
+  #contextMenu {
+    border-width: 3px;
   }
 }
 
 /* ============================
-   31. DARK MODE ENFORCEMENT
+   39. DARK MODE ENFORCEMENT
    ============================ */
 
 @media (prefers-color-scheme: light) {
@@ -1268,151 +1938,22 @@ body.selection-mode .message-bubble {
 }
 
 /* ============================
-   32. CHARACTER COUNTER
+   40. PERFORMANCE
    ============================ */
 
-.char-counter {
-  position: absolute;
-  /* Positioned inside the textarea container (see index.html wrapper) */
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  font-weight: 500;
-  pointer-events: none;
-  user-select: none;
-  transition: color 0.2s ease;
-  opacity: 0;
-}
-
-/* Show counter when input is focused or has content */
-#chatForm:focus-within .char-counter,
-#confessionForm:focus-within .char-counter,
-.char-counter.visible {
-  opacity: 1;
-}
-
-/* Warning state - approaching limit */
-.char-counter.warning {
-  color: var(--warning);
-}
-
-/* Danger state - near limit */
-.char-counter.danger {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-/* At limit */
-.char-counter.limit {
-  color: var(--danger);
-  font-weight: 700;
-  animation: systemPulse 0.5s ease-in-out infinite;
-}
-
-/* ============================
-   33. BAN CHECK OVERLAY
-   ============================ */
-
-.ban-check-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: var(--bg-color);
-  z-index: 99999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ban-check-overlay.hidden {
-  display: none;
-  opacity: 0;
-}
-
-.ban-check-text {
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  animation: systemPulse 2s ease-in-out infinite;
-}
-
-/* Device banned state */
-.device-banned .ban-check-overlay {
-  display: flex !important;
-}
-
-.device-banned-content {
-  text-align: center;
-}
-
-.device-banned-content h1 {
-  font-size: 1.875rem;
-  color: var(--danger);
-  margin-bottom: 1rem;
-}
-
-.device-banned-content p {
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-}
-
-.device-banned-content .reason {
-  color: #666;
-  font-size: 0.75rem;
-}
-
-/* ============================
-   35. SPAM WARNING TOAST
-   ============================ */
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
-  }
-}
-
-#spam-warning-toast {
-  font-family: 'Inter', sans-serif;
-}
-
-/* ============================
-   36. PERFORMANCE OPTIMIZATIONS
-   ============================ */
-
-/* Disable animation for messages already in DOM (incremental updates) */
 .message-bubble.rendered {
   animation: none;
 }
 
-/* Reduce paint complexity for large message lists */
 #feedContainer {
   contain: layout style;
   will-change: scroll-position;
 }
 
-/* Optimize scrolling performance */
 .message-wrapper {
   contain: layout;
 }
 
-/* Reduce animation work when user prefers reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .message-bubble {
     animation: none !important;
@@ -1423,85 +1964,63 @@ body.selection-mode .message-bubble {
   }
 }
 
-/* GPU acceleration for smooth scrolling on mobile */
-@supports (overflow: overlay) {
-  #feedContainer {
-    overflow: overlay;
-  }
-}
-
 /* ============================
-   37. NAV BADGE NOTIFICATIONS
+   41. RESPONSIVE ADJUSTMENTS
    ============================ */
 
-.nav-item {
-  position: relative;
-}
-
-.nav-badge {
-  position: absolute;
-  top: -6px;
-  right: -8px;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-  font-size: 0.6rem;
-  font-weight: 800;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 9999px;
-  line-height: 1;
-  white-space: nowrap;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
-  border: 2px solid var(--bg-color);
-  z-index: 10;
-  animation: badgeAppear 0.3s var(--ease-out-expo);
-}
-
-.nav-badge.pulse {
-  animation: badgeAppear 0.3s var(--ease-out-expo), badgePulse 1s ease-in-out;
-}
-
-@keyframes badgeAppear {
-  0% {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes badgePulse {
-  0%, 100% {
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
-  }
-  50% {
-    box-shadow: 0 2px 20px rgba(239, 68, 68, 0.8);
-  }
-}
-
-/* Adjust nav item to accommodate badge */
-.nav-item {
-  padding-right: 12px; /* Extra space for badge */
-}
-
-/* Mobile adjustments */
 @media (max-width: 640px) {
-  .nav-badge {
-    top: -4px;
-    right: -6px;
-    font-size: 0.55rem;
-    min-width: 14px;
-    height: 14px;
-    padding: 0 3px;
+  .kebab-btn {
+    width: 28px;
+    height: 28px;
+    right: -30px;
+  }
+  
+  .bubble-wrapper.my-bubble-wrapper .kebab-btn {
+    left: -30px;
+  }
+
+  .message-bubble {
+    max-width: calc(100vw - 140px);
+    padding: 0.75rem 1rem;
+  }
+  
+  nav {
+    padding: 3px;
+  }
+  
+  .nav-item {
+    padding: 6px 12px;
+    font-size: 0.7rem;
+  }
+  
+  .cyberpunk-icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  #scrollToBottomBtn {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .modal-content {
+    margin: 10px;
+  }
+}
+
+@media (max-width: 400px) {
+  .kebab-btn {
+    right: -24px;
+    width: 26px;
+    height: 26px;
+  }
+  
+  .bubble-wrapper.my-bubble-wrapper .kebab-btn {
+    left: -24px;
+  }
+  
+  .nav-item {
+    padding: 5px 8px;
+    font-size: 0.65rem;
   }
 }
