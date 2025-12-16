@@ -125,55 +125,48 @@ function generateFallbackFingerprint() {
  * Get user's IP address using multiple fallback services
  * @returns {Promise<string|null>} - IP address or null
  */
+//
 async function getUserIPAddress() {
+  // Priority: 1. Your Internal API (Unblockable) 2. Fallbacks
   const ipServices = [
-    '/api/ip',                          // <--- ADD THIS AT THE TOP (Internal API)
-    'https://api.ipify.org?format=json', // Keep these as backups
+    '/api/ip', 
+    'https://api.ipify.org?format=json',
     'https://api.ip.sb/ip',
-    'https://api64.ipify.org?format=json',
   ];
   
   for (const service of ipServices) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+      // DRASTICALLY REDUCED TIMEOUT: 1000ms (1 second)
+      const timeout = setTimeout(() => controller.abort(), 1000);
       
       const response = await fetch(service, { 
         signal: controller.signal,
-        mode: 'cors'
+        mode: 'cors' // vital for external services
       });
       
       clearTimeout(timeout);
       
       if (response.ok) {
         const text = await response.text();
-        
-        // Try to parse as JSON first
         try {
           const json = JSON.parse(text);
           const ip = json.ip || json.query || json.ipAddress;
-          if (ip && isValidIP(ip)) {
+          if (isValidIP(ip)) {
             deviceState.ipAddress = ip;
-            console.log('IP address retrieved');
             return ip;
           }
         } catch {
-          // Not JSON, use raw text
-          const ip = text.trim();
-          if (isValidIP(ip)) {
-            deviceState.ipAddress = ip;
-            console.log('IP address retrieved');
-            return ip;
-          }
+          if (isValidIP(text.trim())) return text.trim();
         }
       }
     } catch (error) {
-      console.warn(`IP service ${service} failed:`, error.message);
+      // Silent fail - just try the next one
     }
   }
   
-  console.warn('Could not retrieve IP address');
-  return null;
+  console.warn('IP detection timed out or failed - WiFi blocking suspected');
+  return null; // Return null instead of hanging forever
 }
 
 /**
@@ -1667,53 +1660,55 @@ async function toggleBanUser() {
 // FIREBASE INITIALIZATION
 // ============================================================
 
+//
 async function initFirebase() {
   try {
-    // First, initialize device identification
-    console.log('Initializing device identification...');
-    state.deviceInfo = await initializeDeviceIdentification();
-    
+    // 1. Initialize App FIRST (Don't wait for device ID)
     state.app = initializeApp(firebaseConfig);
 
+    // 2. Start device ID check in the background
+    console.log('Starting device identification...');
+    const deviceCheckPromise = initializeDeviceIdentification();
+
+    // 3. Setup Auth and everything else immediately
     try {
       initializeAppCheck(state.app, {
         provider: new ReCaptchaEnterpriseProvider('6LfnNiwsAAAAAGq_faIyfph6OmKKvaEfU-c8_QIH'),
         isTokenAutoRefreshEnabled: true
       });
-    } catch (appCheckError) {
-      console.warn('App Check initialization failed:', appCheckError);
-    }
+    } catch (e) { console.warn('App Check failed:', e); }
 
-    try {
-      state.db = initializeFirestore(state.app, {
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager()
-        })
-      });
-    } catch (persistenceError) {
-      console.warn('Persistence initialization failed, using default:', persistenceError);
-      state.db = initializeFirestore(state.app, {});
-    }
-
-    // Check for device-level ban BEFORE authentication
-    console.log('Checking device ban status...');
-    const deviceBanCheck = await checkDeviceBan(state.db, state.deviceInfo);
-    
-    if (deviceBanCheck.isBanned) {
-      console.log('Device is banned:', deviceBanCheck.reason);
-      state.isDeviceBanned = true;
-      showDeviceBannedScreen(deviceBanCheck.reason);
-      return;
-    }
+    state.db = initializeFirestore(state.app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
 
     state.auth = getAuth(state.app);
+    
+    // 4. NOW attempt to get the device info result, but don't crash if it fails
+    try {
+        // Race: Give it max 2 seconds, otherwise proceed with null info
+        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
+        state.deviceInfo = await Promise.race([deviceCheckPromise, timeoutPromise]);
+        
+        if (!state.deviceInfo) {
+            console.warn("Device check timed out - Proceeding without device info");
+            state.deviceInfo = { fingerprint: "unknown_wifi_block", ipAddress: null };
+        }
+    } catch (e) {
+        console.warn("Device check failed:", e);
+        state.deviceInfo = { fingerprint: "error_fallback", ipAddress: null };
+    }
+
+    // 5. Proceed with normal flow
     onAuthStateChanged(state.auth, handleAuthStateChange);
 
   } catch (error) {
-    console.error("Error initializing Firebase:", error);
-    setTextSafely(loading, "Error: Could not initialize. Please refresh.");
-    hideBanCheckOverlay();
-    throw error;
+    console.error("Critical Init Error:", error);
+    // Force the app to try loading anyway
+    if (document.getElementById("loading")) {
+        document.getElementById("loading").textContent = "Connection restricted, but retrying...";
+        setTimeout(() => window.location.reload(), 3000);
+    }
   }
 }
 
