@@ -258,64 +258,65 @@ async function initializeDeviceIdentification() {
  * @param {Object} deviceInfo - Device information object
  * @returns {Promise<Object>} - Ban check result
  */
+/**
+ * Check if device is banned (With 2-second Timeout Bypass)
+ *
+ */
 async function checkDeviceBan(db, deviceInfo) {
   if (!db || !deviceInfo) {
     return { isBanned: false, reason: null };
   }
-  
-  try {
-    // Check fingerprint ban
-    if (deviceInfo.fingerprint) {
-      const fingerprintBanRef = doc(db, "banned_devices", deviceInfo.fingerprint);
-      const fingerprintBanSnap = await getDoc(fingerprintBanRef);
-      
-      if (fingerprintBanSnap.exists()) {
-        const banData = fingerprintBanSnap.data();
-        return { 
-          isBanned: true, 
-          reason: 'Device banned',
-          bannedAt: banData.timestamp,
-          banType: 'fingerprint'
-        };
+
+  // WRAPPER: Timeout after 2000ms (2 seconds)
+  const timeoutPromise = new Promise(resolve => 
+    setTimeout(() => resolve({ isBanned: false, timeout: true }), 2000)
+  );
+
+  const checkPromise = (async () => {
+    try {
+      // Check fingerprint ban
+      if (deviceInfo.fingerprint) {
+        const fingerprintBanRef = doc(db, "banned_devices", deviceInfo.fingerprint);
+        const fingerprintBanSnap = await getDoc(fingerprintBanRef);
+        
+        if (fingerprintBanSnap.exists()) {
+          const banData = fingerprintBanSnap.data();
+          return { 
+            isBanned: true, 
+            reason: 'Device banned',
+            bannedAt: banData.timestamp,
+            banType: 'fingerprint'
+          };
+        }
       }
+      
+      // Check IP ban
+      if (deviceInfo.ipAddress) {
+        const ipHash = hashIP(deviceInfo.ipAddress);
+        const ipBanRef = doc(db, "banned_ips", ipHash);
+        const ipBanSnap = await getDoc(ipBanRef);
+        
+        if (ipBanSnap.exists()) {
+          const banData = ipBanSnap.data();
+          return { 
+            isBanned: true, 
+            reason: 'IP address banned',
+            bannedAt: banData.timestamp,
+            banType: 'ip'
+          };
+        }
+      }
+      
+      return { isBanned: false, reason: null };
+      
+    } catch (error) {
+      console.warn('Ban check error (likely network block):', error);
+      return { isBanned: false, reason: null, error: error.message };
     }
-    
-    // Check IP ban
-    if (deviceInfo.ipAddress) {
-      const ipHash = hashIP(deviceInfo.ipAddress);
-      const ipBanRef = doc(db, "banned_ips", ipHash);
-      const ipBanSnap = await getDoc(ipBanRef);
-      
-      if (ipBanSnap.exists()) {
-        const banData = ipBanSnap.data();
-        return { 
-          isBanned: true, 
-          reason: 'IP address banned',
-          bannedAt: banData.timestamp,
-          banType: 'ip'
-        };
-      }
-      
-      // Also check raw IP (for backward compatibility)
-      const rawIpBanRef = doc(db, "banned_ips", deviceInfo.ipAddress.replace(/\./g, '_'));
-      const rawIpBanSnap = await getDoc(rawIpBanRef);
-      
-      if (rawIpBanSnap.exists()) {
-        return { 
-          isBanned: true, 
-          reason: 'IP address banned',
-          banType: 'ip'
-        };
-      }
-    }
-    
-    return { isBanned: false, reason: null };
-    
-  } catch (error) {
-    console.error('Ban check error:', error);
-    // On error, allow access but log the issue
-    return { isBanned: false, reason: null, error: error.message };
-  }
+  })();
+
+  // Race: If network is slow/blocked, timeout wins and lets user in
+  return Promise.race([checkPromise, timeoutPromise]);
 }
 
 /**
@@ -1661,54 +1662,62 @@ async function toggleBanUser() {
 // ============================================================
 
 //
+/**
+ *
+ */
 async function initFirebase() {
   try {
-    // 1. Initialize App FIRST (Don't wait for device ID)
+    // 1. Initialize App
     state.app = initializeApp(firebaseConfig);
 
-    // 2. Start device ID check in the background
-    console.log('Starting device identification...');
-    const deviceCheckPromise = initializeDeviceIdentification();
-
-    // 3. Setup Auth and everything else immediately
+    // 2. Initialize Firestore
     try {
-      initializeAppCheck(state.app, {
-        provider: new ReCaptchaEnterpriseProvider('6LfnNiwsAAAAAGq_faIyfph6OmKKvaEfU-c8_QIH'),
-        isTokenAutoRefreshEnabled: true
+      state.db = initializeFirestore(state.app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
       });
-    } catch (e) { console.warn('App Check failed:', e); }
-
-    state.db = initializeFirestore(state.app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-    });
-
-    state.auth = getAuth(state.app);
-    
-    // 4. NOW attempt to get the device info result, but don't crash if it fails
-    try {
-        // Race: Give it max 2 seconds, otherwise proceed with null info
-        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
-        state.deviceInfo = await Promise.race([deviceCheckPromise, timeoutPromise]);
-        
-        if (!state.deviceInfo) {
-            console.warn("Device check timed out - Proceeding without device info");
-            state.deviceInfo = { fingerprint: "unknown_wifi_block", ipAddress: null };
-        }
-    } catch (e) {
-        console.warn("Device check failed:", e);
-        state.deviceInfo = { fingerprint: "error_fallback", ipAddress: null };
+    } catch (persistenceError) {
+      state.db = initializeFirestore(state.app, {});
     }
 
-    // 5. Proceed with normal flow
+    // 3. Start Device ID (Non-blocking)
+    const deviceInfoPromise = initializeDeviceIdentification();
+
+    // 4. Auth
+    state.auth = getAuth(state.app);
+
+    // 5. Wait for Device ID (Max 1s)
+    try {
+        const timeout = new Promise(r => setTimeout(r, 1000));
+        state.deviceInfo = await Promise.race([deviceInfoPromise, timeout]);
+        if (!state.deviceInfo) state.deviceInfo = { fingerprint: "wifi_bypass", ipAddress: null };
+    } catch (e) {
+        state.deviceInfo = { fingerprint: "error_bypass", ipAddress: null };
+    }
+
+    // 6. Check Device Ban (With the new timeout wrapper we added above)
+    console.log('Checking device ban status...');
+    const deviceBanCheck = await checkDeviceBan(state.db, state.deviceInfo);
+    
+    if (deviceBanCheck.isBanned) {
+      console.log('Device is banned:', deviceBanCheck.reason);
+      state.isDeviceBanned = true;
+      showDeviceBannedScreen(deviceBanCheck.reason);
+      return;
+    }
+
+    // 7. Proceed
     onAuthStateChanged(state.auth, handleAuthStateChange);
 
   } catch (error) {
-    console.error("Critical Init Error:", error);
-    // Force the app to try loading anyway
-    if (document.getElementById("loading")) {
-        document.getElementById("loading").textContent = "Connection restricted, but retrying...";
-        setTimeout(() => window.location.reload(), 3000);
-    }
+    console.error("Error initializing Firebase:", error);
+    // FORCE LOAD: If everything fails, try to load the app anyway
+    setTextSafely(loading, "Network Restricted. Retrying...");
+    setTimeout(() => {
+        hideBanCheckOverlay();
+        showPage('chat');
+    }, 2000);
   }
 }
 
@@ -1718,7 +1727,7 @@ async function handleAuthStateChange(user) {
     console.log("Authenticated with UID:", state.currentUserId);
 
     // Register device with user association
-    await registerDevice(state.db, state.currentUserId, state.deviceInfo);
+    registerDevice(state.db, state.currentUserId, state.deviceInfo).catch(e => console.warn(e));
 
     state.confessionsCollection = collection(state.db, "confessions");
     state.chatCollection = collection(state.db, "chat");
